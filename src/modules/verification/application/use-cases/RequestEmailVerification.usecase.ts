@@ -1,0 +1,147 @@
+import { Email } from '../../../../shared/domain/value-objects/Email.vo.js';
+import { EmailVerification } from '../../domain/entities/EmailVerification.entity.js';
+import { EmailVerificationRepository } from '../../domain/ports/EmailVerificationRepository.port.js';
+import { EmailEventRepository } from '../../domain/ports/EmailEventRepository.port.js';
+import { OtpHasher } from '../../domain/ports/OtpHasher.port.js';
+import { OtpGenerator } from '../../domain/ports/OtpGenerator.port.js';
+import { EmailSender } from '../../domain/ports/EmailSender.port.js';
+import {
+  VerificationBlockedError,
+  VerificationCooldownError,
+  HourlyLimitExceededError,
+  EmailDeliveryError,
+  DuplicatePendingVerificationError,
+} from '../../domain/errors/Verification.errors.js';
+import {
+  RequestEmailVerificationDto,
+  RequestEmailVerificationResult,
+} from '../dtos/Verification.dto.js';
+
+const BLOCKED_COOLDOWN_MS = 30 * 60 * 1000;    // 30 minutes
+const REQUEST_COOLDOWN_MS = 60 * 1000;          // 60 seconds
+const HOURLY_LIMIT = 5;
+const OTP_TTL_MS = 10 * 60 * 1000;             // 10 minutes
+const MAX_ATTEMPTS = 5;
+
+export class RequestEmailVerificationUseCase {
+  constructor(
+    private readonly verificationRepo: EmailVerificationRepository,
+    private readonly eventRepo: EmailEventRepository,
+    private readonly hasher: OtpHasher,
+    private readonly generator: OtpGenerator,
+    private readonly emailSender: EmailSender,
+  ) {}
+
+  async execute(dto: RequestEmailVerificationDto): Promise<RequestEmailVerificationResult> {
+    const email = Email.fromPrimitive(dto.email);
+
+    // 1. Check latest verification for this email
+    const latest = await this.verificationRepo.findLatestByEmail(email);
+
+    if (latest !== null) {
+      const now = new Date();
+
+      // a. If BLOCKED and within cooldown window → reject
+      if (latest.getStatus().isBlocked()) {
+        const blockedAt = latest.getBlockedAt() ?? latest.getSentAt();
+        const retryAfter = new Date(blockedAt.getTime() + BLOCKED_COOLDOWN_MS);
+        if (now < retryAfter) {
+          throw new VerificationBlockedError(retryAfter);
+        }
+        // Cooldown expired — allow new request
+      } else if (latest.getStatus().isPending()) {
+        if (latest.isExpired()) {
+          // b. Pending but expired → expire it, no cooldown penalty
+          latest.expire();
+          const expiredId = latest.getId().toPrimitive();
+          const expiredEmail = email.toPrimitive();
+          await this.verificationRepo.save(latest);
+          this.eventRepo
+            .save({ email: expiredEmail, type: 'expired', verificationId: expiredId })
+            .catch((err) =>
+              console.error('[RequestEmailVerification] Failed to save expired event:', err),
+            );
+        } else {
+          // c. Still pending and not expired
+          const sentAt = latest.getSentAt();
+          const cooldownEnd = new Date(sentAt.getTime() + REQUEST_COOLDOWN_MS);
+          if (now < cooldownEnd) {
+            this.eventRepo
+              .save({ email: email.toPrimitive(), type: 'cooldown_rejected' })
+              .catch((err) =>
+                console.error('[RequestEmailVerification] Failed to save cooldown_rejected event:', err),
+              );
+            throw new VerificationCooldownError(cooldownEnd);
+          }
+          // d. Cooldown passed → expire and continue
+          latest.expire();
+          const expiredId = latest.getId().toPrimitive();
+          const expiredEmail = email.toPrimitive();
+          await this.verificationRepo.save(latest);
+          this.eventRepo
+            .save({ email: expiredEmail, type: 'expired', verificationId: expiredId })
+            .catch((err) =>
+              console.error('[RequestEmailVerification] Failed to save expired event:', err),
+            );
+        }
+      }
+    }
+
+    // 2. Hourly limit check
+    const hourlyCount = await this.verificationRepo.countByEmailInLastHour(email);
+    if (hourlyCount >= HOURLY_LIMIT) {
+      this.eventRepo
+        .save({ email: email.toPrimitive(), type: 'hourly_limit_exceeded' })
+        .catch((err) =>
+          console.error('[RequestEmailVerification] Failed to save event:', err),
+        );
+      throw new HourlyLimitExceededError();
+    }
+
+    // 3. Generate OTP
+    const code = this.generator.generate();
+    const salt = this.hasher.generateSalt();
+    const hash = this.hasher.hash(code, salt);
+
+    // 4. Send email — if it fails, nothing is persisted
+    try {
+      await this.emailSender.sendOtp(email, code);
+    } catch {
+      throw new EmailDeliveryError(email.toPrimitive());
+    }
+
+    // 5. Persist the verification (DB assigns the id)
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    const verification = EmailVerification.create({
+      email,
+      otpHash: hash,
+      otpSalt: salt,
+      maxAttempts: MAX_ATTEMPTS,
+      expiresAt,
+    });
+
+    try {
+      await this.verificationRepo.save(verification);
+    } catch (err) {
+      // Two concurrent requests raced — the unique partial index blocked the second INSERT.
+      // Map to a cooldown error so the client gets a 429 instead of a 500.
+      if (err instanceof DuplicatePendingVerificationError) {
+        throw new VerificationCooldownError(new Date(Date.now() + REQUEST_COOLDOWN_MS));
+      }
+      throw err;
+    }
+
+    // 6. Fire-and-forget event
+    this.eventRepo
+      .save({
+        email: email.toPrimitive(),
+        type: 'requested',
+        verificationId: verification.getId().toPrimitive(),
+      })
+      .catch((err) =>
+        console.error('[RequestEmailVerification] Failed to save event:', err),
+      );
+
+    return { verificationId: verification.getId().toPrimitive() };
+  }
+}
