@@ -28,6 +28,12 @@ import { RevokeAllTokensUseCase } from '../../../modules/credential/application/
 import { ChangePasswordUseCase } from '../../../modules/credential/application/use-cases/ChangePassword.usecase.js';
 import { ChangeUsernameUseCase } from '../../../modules/credential/application/use-cases/ChangeUsername.usecase.js';
 import { createCredentialRoutes } from '../../../modules/credential/presentation/http/credential.routes.js';
+// Identity
+import { PostgresIdentityRepository } from '../../../modules/identity/infrastructure/persistence/PostgresIdentityRepository.js';
+import { CreateIdentityUseCase } from '../../../modules/identity/application/use-cases/CreateIdentity.usecase.js';
+// Registration
+import { RegisterSaga } from '../../../modules/registration/application/RegisterSaga.js';
+import { createRegistrationRoutes } from '../../../modules/registration/presentation/http/registration.routes.js';
 // Account
 import { PostgresAccountRepository } from '../../../modules/account/infrastructure/persistence/PostgresAccountRepository.js';
 import { PostgresAccountEventRepository } from '../../../modules/account/infrastructure/persistence/PostgresAccountEventRepository.js';
@@ -89,13 +95,16 @@ export function createApp(): Hono {
   const tokenService = new JwtTokenService(jwtSecret);
   const reservedList = new StaticUsernameReservedList();
 
+  // ── Identity infrastructure ───────────────────────────────────────
+  const identityRepo = new PostgresIdentityRepository(pgPool);
+
   // ── Account infrastructure ────────────────────────────────────────
   const accountRepo = new PostgresAccountRepository(pgPool);
   const accountEventRepo = new PostgresAccountEventRepository(pgPool);
   const accountQueryAdapter = new PostgresAccountQueryAdapter(pgPool);
 
   // ── Credential use cases ──────────────────────────────────────────
-  const _createCredential = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
+  const createCredentialUseCase = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
   const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
   const refreshToken = new RefreshTokenUseCase(credentialRepo, sessionRepo, tokenService, accountQueryAdapter);
   const revokeToken = new RevokeTokenUseCase(sessionRepo);
@@ -103,8 +112,11 @@ export function createApp(): Hono {
   const _changePassword = new ChangePasswordUseCase(credentialRepo, sessionRepo, passwordHasher);
   const _changeUsername = new ChangeUsernameUseCase(credentialRepo, reservedList);
 
+  // ── Identity use cases ────────────────────────────────────────────
+  const createIdentityUseCase = new CreateIdentityUseCase(identityRepo);
+
   // ── Account use cases ─────────────────────────────────────────────
-  const _createAccount = new CreateAccountUseCase(accountRepo, accountEventRepo);
+  const createAccountUseCase = new CreateAccountUseCase(accountRepo, accountEventRepo);
   const requestOrganizer = new RequestOrganizerUseCase(accountRepo, accountEventRepo);
   const approveOrganizer = new ApproveOrganizerUseCase(accountRepo, accountEventRepo);
   const rejectOrganizer = new RejectOrganizerUseCase(accountRepo, accountEventRepo);
@@ -129,6 +141,20 @@ export function createApp(): Hono {
   );
   app.route('/accounts', accountRoutes);
 
+  // ── Registration ──────────────────────────────────────────────────
+  const registerSaga = new RegisterSaga(
+    verificationRepo,
+    createIdentityUseCase,
+    identityRepo,
+    createCredentialUseCase,
+    credentialRepo,
+    createAccountUseCase,
+    accountRepo,
+    signIn,
+  );
+  const registrationRoutes = createRegistrationRoutes(registerSaga);
+  app.route('/register', registrationRoutes);
+
   // ── Error handler (last) ──────────────────────────────────────────
   app.onError(errorHandler);
 
@@ -148,6 +174,7 @@ export function startServer(port: number): AppContext {
   console.log(`║  GET    http://localhost:${port}/health                      ║`);
   console.log(`║  POST   http://localhost:${port}/verification/email           ║`);
   console.log(`║  POST   http://localhost:${port}/verification/email/verify    ║`);
+  console.log(`║  POST   http://localhost:${port}/register                     ║`);
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 
   return { app, server };
