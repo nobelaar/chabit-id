@@ -28,6 +28,19 @@ import { RevokeAllTokensUseCase } from '../../../modules/credential/application/
 import { ChangePasswordUseCase } from '../../../modules/credential/application/use-cases/ChangePassword.usecase.js';
 import { ChangeUsernameUseCase } from '../../../modules/credential/application/use-cases/ChangeUsername.usecase.js';
 import { createCredentialRoutes } from '../../../modules/credential/presentation/http/credential.routes.js';
+// Account
+import { PostgresAccountRepository } from '../../../modules/account/infrastructure/persistence/PostgresAccountRepository.js';
+import { PostgresAccountEventRepository } from '../../../modules/account/infrastructure/persistence/PostgresAccountEventRepository.js';
+import { PostgresAccountQueryAdapter } from '../../../modules/account/infrastructure/adapters/PostgresAccountQueryAdapter.js';
+import { CreateAccountUseCase } from '../../../modules/account/application/use-cases/CreateAccount.usecase.js';
+import { RequestOrganizerUseCase } from '../../../modules/account/application/use-cases/RequestOrganizer.usecase.js';
+import { ApproveOrganizerUseCase } from '../../../modules/account/application/use-cases/ApproveOrganizer.usecase.js';
+import { RejectOrganizerUseCase } from '../../../modules/account/application/use-cases/RejectOrganizer.usecase.js';
+import { ReRequestOrganizerUseCase } from '../../../modules/account/application/use-cases/ReRequestOrganizer.usecase.js';
+import { DeactivateAccountUseCase } from '../../../modules/account/application/use-cases/DeactivateAccount.usecase.js';
+import { ReactivateAccountUseCase } from '../../../modules/account/application/use-cases/ReactivateAccount.usecase.js';
+import { GetAccountsByIdentityUseCase } from '../../../modules/account/application/use-cases/GetAccountsByIdentity.usecase.js';
+import { createAccountRoutes } from '../../../modules/account/presentation/http/account.routes.js';
 
 export interface AppContext {
   app: Hono;
@@ -75,16 +88,30 @@ export function createApp(): Hono {
   const jwtSecret = process.env['JWT_SECRET'] ?? 'dev-secret';
   const tokenService = new JwtTokenService(jwtSecret);
   const reservedList = new StaticUsernameReservedList();
-  const stubAccountQuery = { getAccountsByIdentityRef: async () => [] };
+
+  // ── Account infrastructure ────────────────────────────────────────
+  const accountRepo = new PostgresAccountRepository(pgPool);
+  const accountEventRepo = new PostgresAccountEventRepository(pgPool);
+  const accountQueryAdapter = new PostgresAccountQueryAdapter(pgPool);
 
   // ── Credential use cases ──────────────────────────────────────────
   const _createCredential = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
-  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, stubAccountQuery);
-  const refreshToken = new RefreshTokenUseCase(credentialRepo, sessionRepo, tokenService, stubAccountQuery);
+  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
+  const refreshToken = new RefreshTokenUseCase(credentialRepo, sessionRepo, tokenService, accountQueryAdapter);
   const revokeToken = new RevokeTokenUseCase(sessionRepo);
   const _revokeAllTokens = new RevokeAllTokensUseCase(credentialRepo, sessionRepo);
   const _changePassword = new ChangePasswordUseCase(credentialRepo, sessionRepo, passwordHasher);
   const _changeUsername = new ChangeUsernameUseCase(credentialRepo, reservedList);
+
+  // ── Account use cases ─────────────────────────────────────────────
+  const _createAccount = new CreateAccountUseCase(accountRepo, accountEventRepo);
+  const requestOrganizer = new RequestOrganizerUseCase(accountRepo, accountEventRepo);
+  const approveOrganizer = new ApproveOrganizerUseCase(accountRepo, accountEventRepo);
+  const rejectOrganizer = new RejectOrganizerUseCase(accountRepo, accountEventRepo);
+  const reRequestOrganizer = new ReRequestOrganizerUseCase(accountRepo, accountEventRepo);
+  const _deactivateAccount = new DeactivateAccountUseCase(accountRepo, accountEventRepo);
+  const _reactivateAccount = new ReactivateAccountUseCase(accountRepo, accountEventRepo);
+  const getAccountsByIdentity = new GetAccountsByIdentityUseCase(accountRepo);
 
   // ── Routes ────────────────────────────────────────────────────────
   const verificationRoutes = createVerificationRoutes(requestVerification, verifyEmail);
@@ -92,6 +119,15 @@ export function createApp(): Hono {
 
   const credentialRoutes = createCredentialRoutes(signIn, refreshToken, revokeToken);
   app.route('/auth', credentialRoutes);
+
+  const accountRoutes = createAccountRoutes(
+    requestOrganizer,
+    approveOrganizer,
+    rejectOrganizer,
+    reRequestOrganizer,
+    getAccountsByIdentity,
+  );
+  app.route('/accounts', accountRoutes);
 
   // ── Error handler (last) ──────────────────────────────────────────
   app.onError(errorHandler);
