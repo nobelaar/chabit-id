@@ -9,8 +9,8 @@ export class BlnkIdentityRef {
   private constructor(value: string) { this.value = value; }
 
   static fromPrimitive(raw: string): BlnkIdentityRef {
-    if (!raw.trim()) throw new InvalidBlnkIdentityRefError();
-    return new BlnkIdentityRef(raw.trim());
+    if (!raw || raw.trim().length === 0) throw new InvalidBlnkIdentityRefError();
+    return new BlnkIdentityRef(raw); // store as-is, don't trim
   }
 
   toPrimitive(): string { return this.value; }

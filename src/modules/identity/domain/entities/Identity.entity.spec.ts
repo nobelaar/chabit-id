@@ -4,7 +4,7 @@ import { IdentityId } from '../value-objects/IdentityId.vo.js';
 import { FullName } from '../value-objects/FullName.vo.js';
 import { Nationality } from '../value-objects/Nationality.vo.js';
 import { Country } from '../value-objects/Country.vo.js';
-import { BlnkIdentityRef } from '../value-objects/BlnkIdentityRef.vo.js';
+import { BlnkIdentityRef, InvalidBlnkIdentityRefError } from '../value-objects/BlnkIdentityRef.vo.js';
 import { Email } from '../../../../shared/domain/value-objects/Email.vo.js';
 import { PhoneNumber } from '../../../../shared/domain/value-objects/PhoneNumber.vo.js';
 import {
@@ -25,7 +25,7 @@ import {
   IdentityNotFoundError,
 } from '../errors/Identity.errors.js';
 
-const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+const VALID_UUID = '550e8400-e29b-4d4a-a716-446655440000';
 const VALID_EMAIL = 'test@example.com';
 const VALID_PHONE = '+1234567890';
 
@@ -139,10 +139,10 @@ describe('IdentityId VO', () => {
     expect(() => IdentityId.fromPrimitive('not-a-uuid')).toThrow(InvalidIdentityIdError);
   });
 
-  it('generate() produces a valid UUID', () => {
+  it('generate() produces a valid UUID v4', () => {
     const id = IdentityId.generate();
     expect(id.toPrimitive()).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
   });
 
@@ -256,7 +256,7 @@ describe('CreateIdentityUseCase', () => {
     const result = await useCase.execute(dto);
     expect(result.identityId).toBeTruthy();
     expect(result.identityId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
   });
 
@@ -383,5 +383,27 @@ describe('UpdateProfileUseCase', () => {
     await expect(
       updateUseCase.execute({ identityId, phone: VALID_PHONE }),
     ).resolves.toBeUndefined();
+  });
+});
+
+// ── BlnkIdentityRef VO ────────────────────────────────────────────────────────
+
+describe('BlnkIdentityRef VO', () => {
+  it('accepts a non-empty string', () => {
+    const ref = BlnkIdentityRef.fromPrimitive('blnk-123');
+    expect(ref.toPrimitive()).toBe('blnk-123');
+  });
+
+  it('preserves leading/trailing whitespace (opaque reference)', () => {
+    const ref = BlnkIdentityRef.fromPrimitive('  blnk-abc  ');
+    expect(ref.toPrimitive()).toBe('  blnk-abc  ');
+  });
+
+  it('throws InvalidBlnkIdentityRefError for empty string', () => {
+    expect(() => BlnkIdentityRef.fromPrimitive('')).toThrow(InvalidBlnkIdentityRefError);
+  });
+
+  it('throws InvalidBlnkIdentityRefError for whitespace-only string', () => {
+    expect(() => BlnkIdentityRef.fromPrimitive('   ')).toThrow(InvalidBlnkIdentityRefError);
   });
 });
