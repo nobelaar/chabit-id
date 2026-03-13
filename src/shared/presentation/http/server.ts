@@ -14,6 +14,20 @@ import { CryptoOtpGenerator } from '../../../modules/verification/infrastructure
 import { StubEmailSender } from '../../../modules/verification/infrastructure/adapters/StubEmailSender.js';
 import { PostgresTransactionRunner } from '../../../modules/verification/infrastructure/adapters/PostgresTransactionRunner.js';
 import { pgPool } from '../../infrastructure/db/pgPool.js';
+// Credential
+import { BcryptPasswordHasher } from '../../../modules/credential/infrastructure/adapters/BcryptPasswordHasher.js';
+import { JwtTokenService } from '../../../modules/credential/infrastructure/adapters/JwtTokenService.js';
+import { StaticUsernameReservedList } from '../../../modules/credential/infrastructure/adapters/StaticUsernameReservedList.js';
+import { PostgresCredentialRepository } from '../../../modules/credential/infrastructure/persistence/PostgresCredentialRepository.js';
+import { PostgresSessionRepository } from '../../../modules/credential/infrastructure/persistence/PostgresSessionRepository.js';
+import { CreateCredentialUseCase } from '../../../modules/credential/application/use-cases/CreateCredential.usecase.js';
+import { SignInUseCase } from '../../../modules/credential/application/use-cases/SignIn.usecase.js';
+import { RefreshTokenUseCase } from '../../../modules/credential/application/use-cases/RefreshToken.usecase.js';
+import { RevokeTokenUseCase } from '../../../modules/credential/application/use-cases/RevokeToken.usecase.js';
+import { RevokeAllTokensUseCase } from '../../../modules/credential/application/use-cases/RevokeAllTokens.usecase.js';
+import { ChangePasswordUseCase } from '../../../modules/credential/application/use-cases/ChangePassword.usecase.js';
+import { ChangeUsernameUseCase } from '../../../modules/credential/application/use-cases/ChangeUsername.usecase.js';
+import { createCredentialRoutes } from '../../../modules/credential/presentation/http/credential.routes.js';
 
 export interface AppContext {
   app: Hono;
@@ -54,9 +68,30 @@ export function createApp(): Hono {
     txRunner,
   );
 
+  // ── Credential infrastructure ─────────────────────────────────────
+  const credentialRepo = new PostgresCredentialRepository(pgPool);
+  const sessionRepo = new PostgresSessionRepository(pgPool);
+  const passwordHasher = new BcryptPasswordHasher();
+  const jwtSecret = process.env['JWT_SECRET'] ?? 'dev-secret';
+  const tokenService = new JwtTokenService(jwtSecret);
+  const reservedList = new StaticUsernameReservedList();
+  const stubAccountQuery = { getAccountsByIdentityRef: async () => [] };
+
+  // ── Credential use cases ──────────────────────────────────────────
+  const _createCredential = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
+  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, stubAccountQuery);
+  const refreshToken = new RefreshTokenUseCase(credentialRepo, sessionRepo, tokenService, stubAccountQuery);
+  const revokeToken = new RevokeTokenUseCase(sessionRepo);
+  const _revokeAllTokens = new RevokeAllTokensUseCase(credentialRepo, sessionRepo);
+  const _changePassword = new ChangePasswordUseCase(credentialRepo, sessionRepo, passwordHasher);
+  const _changeUsername = new ChangeUsernameUseCase(credentialRepo, reservedList);
+
   // ── Routes ────────────────────────────────────────────────────────
   const verificationRoutes = createVerificationRoutes(requestVerification, verifyEmail);
   app.route('/verification', verificationRoutes);
+
+  const credentialRoutes = createCredentialRoutes(signIn, refreshToken, revokeToken);
+  app.route('/auth', credentialRoutes);
 
   // ── Error handler (last) ──────────────────────────────────────────
   app.onError(errorHandler);

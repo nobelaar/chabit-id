@@ -1,0 +1,32 @@
+import jwt from 'jsonwebtoken';
+import { TokenService, AccessTokenPayload } from '../../domain/ports/TokenService.port.js';
+import { UpdateToken } from '../../domain/value-objects/UpdateToken.vo.js';
+import { SessionId } from '../../domain/value-objects/SessionId.vo.js';
+import { randomUUID } from 'node:crypto';
+
+const ACCESS_TOKEN_TTL = 15 * 60; // 15 minutes in seconds
+
+export class JwtTokenService implements TokenService {
+  constructor(private readonly secret: string) {}
+
+  generateAccessToken(payload: AccessTokenPayload): string {
+    return jwt.sign(
+      {
+        sub: payload.sub.toPrimitive(),
+        sid: payload.sid.toPrimitive(),
+        username: payload.username,
+        accounts: payload.accounts,
+      },
+      this.secret,
+      { expiresIn: ACCESS_TOKEN_TTL },
+    );
+  }
+
+  generateUpdateToken(): UpdateToken {
+    return UpdateToken.fromPrimitive(randomUUID());
+  }
+
+  generateSessionId(): SessionId {
+    return SessionId.fromPrimitive(randomUUID());
+  }
+}

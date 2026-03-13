@@ -16,6 +16,15 @@ import {
   EmailNotVerifiedError,
   BlnkRefAlreadyAssignedError,
 } from '../../../modules/identity/domain/errors/Identity.errors.js';
+import {
+  CredentialNotFoundError,
+  InvalidCredentialsError,
+  SessionNotFoundError,
+  SessionExpiredError,
+  UsernameAlreadyTakenError,
+  UsernameReservedError,
+  CannotChangeUsernameYetError,
+} from '../../../modules/credential/domain/errors/Credential.errors.js';
 
 interface ErrorResponse {
   error: string;
@@ -149,6 +158,14 @@ export function errorHandler(err: Error, c: Context): Response {
       409,
     );
   }
+
+  if (err instanceof InvalidCredentialsError) return c.json({ error: 'INVALID_CREDENTIALS', message: err.message }, 401);
+  if (err instanceof SessionNotFoundError) return c.json({ error: 'SESSION_NOT_FOUND', message: err.message }, 401);
+  if (err instanceof SessionExpiredError) return c.json({ error: 'SESSION_EXPIRED', message: err.message }, 401);
+  if (err instanceof UsernameAlreadyTakenError) return c.json({ error: 'USERNAME_TAKEN', message: err.message }, 409);
+  if (err instanceof UsernameReservedError) return c.json({ error: 'USERNAME_RESERVED', message: err.message }, 409);
+  if (err instanceof CannotChangeUsernameYetError) return c.json({ error: 'USERNAME_CHANGE_TOO_SOON', message: err.message }, 422);
+  if (err instanceof CredentialNotFoundError) return c.json({ error: 'CREDENTIAL_NOT_FOUND', message: err.message }, 404);
 
   if (err instanceof DomainError) {
     return c.json<ErrorResponse>(
