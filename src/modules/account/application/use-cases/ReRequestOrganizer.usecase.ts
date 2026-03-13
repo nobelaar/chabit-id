@@ -1,4 +1,5 @@
 import { AccountRepository } from '../../domain/ports/AccountRepository.port.js';
+import { logger } from '../../../../shared/infrastructure/logger.js';
 import { AccountEventRepository } from '../../domain/ports/AccountEventRepository.port.js';
 import { AccountType } from '../../domain/value-objects/AccountType.vo.js';
 import { IdentityRef } from '../../../../shared/domain/value-objects/IdentityRef.vo.js';
@@ -16,6 +17,6 @@ export class ReRequestOrganizerUseCase {
     account.reRequest();
     await this.repo.save(account);
     this.eventRepo.save({ accountId: account.getId(), type: 're_requested', performedBy: callerRef })
-      .catch(err => console.error('[ReRequestOrganizer] event error:', err));
+      .catch(err => logger.warn({ err }, '[ReRequestOrganizer] event error'));
   }
 }

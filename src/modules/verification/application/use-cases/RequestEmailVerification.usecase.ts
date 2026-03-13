@@ -1,4 +1,5 @@
 import { Email } from '../../../../shared/domain/value-objects/Email.vo.js';
+import { logger } from '../../../../shared/infrastructure/logger.js';
 import { EmailVerification } from '../../domain/entities/EmailVerification.entity.js';
 import { EmailVerificationRepository } from '../../domain/ports/EmailVerificationRepository.port.js';
 import { EmailEventRepository } from '../../domain/ports/EmailEventRepository.port.js';
@@ -59,7 +60,7 @@ export class RequestEmailVerificationUseCase {
           this.eventRepo
             .save({ email: expiredEmail, type: 'expired', verificationId: expiredId })
             .catch((err) =>
-              console.error('[RequestEmailVerification] Failed to save expired event:', err),
+              logger.warn({ err }, '[RequestEmailVerification] Failed to save expired event'),
             );
         } else {
           // c. Still pending and not expired
@@ -69,7 +70,7 @@ export class RequestEmailVerificationUseCase {
             this.eventRepo
               .save({ email: email.toPrimitive(), type: 'cooldown_rejected' })
               .catch((err) =>
-                console.error('[RequestEmailVerification] Failed to save cooldown_rejected event:', err),
+                logger.warn({ err }, '[RequestEmailVerification] Failed to save cooldown_rejected event'),
               );
             throw new VerificationCooldownError(cooldownEnd);
           }
@@ -81,7 +82,7 @@ export class RequestEmailVerificationUseCase {
           this.eventRepo
             .save({ email: expiredEmail, type: 'expired', verificationId: expiredId })
             .catch((err) =>
-              console.error('[RequestEmailVerification] Failed to save expired event:', err),
+              logger.warn({ err }, '[RequestEmailVerification] Failed to save expired event'),
             );
         }
       }
@@ -93,7 +94,7 @@ export class RequestEmailVerificationUseCase {
       this.eventRepo
         .save({ email: email.toPrimitive(), type: 'hourly_limit_exceeded' })
         .catch((err) =>
-          console.error('[RequestEmailVerification] Failed to save event:', err),
+          logger.warn({ err }, '[RequestEmailVerification] Failed to save event'),
         );
       throw new HourlyLimitExceededError();
     }
@@ -139,7 +140,7 @@ export class RequestEmailVerificationUseCase {
         verificationId: verification.getId().toPrimitive(),
       })
       .catch((err) =>
-        console.error('[RequestEmailVerification] Failed to save event:', err),
+        logger.warn({ err }, '[RequestEmailVerification] Failed to save event'),
       );
 
     return { verificationId: verification.getId().toPrimitive() };

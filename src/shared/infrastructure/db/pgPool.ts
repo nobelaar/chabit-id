@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
+import { logger } from '../logger.js';
 
 export const pgPool = new Pool({
   host: process.env.PG_HOST,
@@ -13,5 +14,5 @@ export const pgPool = new Pool({
 });
 
 pgPool.on('error', (err) => {
-  console.error('[pgPool] Unexpected error on idle client:', err.message);
+  logger.error({ err: err.message }, '[pgPool] Unexpected error on idle client');
 });

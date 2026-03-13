@@ -1,5 +1,6 @@
 import { AccountRepository } from '../../domain/ports/AccountRepository.port.js';
 import { AccountEventRepository } from '../../domain/ports/AccountEventRepository.port.js';
+import { logger } from '../../../../shared/infrastructure/logger.js';
 import { Account } from '../../domain/entities/Account.entity.js';
 import { AccountId } from '../../domain/value-objects/AccountId.vo.js';
 import { AccountType } from '../../domain/value-objects/AccountType.vo.js';
@@ -48,7 +49,7 @@ export class CreateAccountUseCase {
     await this.repo.save(account);
     const callerRef = dto.callerRef ? IdentityRef.fromPrimitive(dto.callerRef) : undefined;
     this.eventRepo.save({ accountId: id, type: 'created', performedBy: callerRef })
-      .catch(err => console.error('[CreateAccount] Failed to save event:', err));
+      .catch(err => logger.warn({ err }, '[CreateAccount] Failed to save event'));
     return { accountId: id.toPrimitive() };
   }
 }

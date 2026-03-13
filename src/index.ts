@@ -1,28 +1,41 @@
 import 'dotenv/config';
 import { startServer } from './shared/presentation/http/server.js';
 import { pgPool } from './shared/infrastructure/db/pgPool.js';
+import { MigrationRunner } from './shared/infrastructure/db/MigrationRunner.js';
+import { logger } from './shared/infrastructure/logger.js';
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 
-const { server } = startServer(PORT);
+// ── Bootstrap ─────────────────────────────────────────────────────────
+async function bootstrap(): Promise<void> {
+  const migrationRunner = new MigrationRunner(pgPool);
+  await migrationRunner.run();
 
-// ── Graceful Shutdown ─────────────────────────────────────────────────
-let shutdownInProgress = false;
+  const { server } = startServer(PORT);
 
-async function shutdown(signal: string): Promise<void> {
-  if (shutdownInProgress) return;
-  shutdownInProgress = true;
+  // ── Graceful Shutdown ────────────────────────────────────────────────
+  let shutdownInProgress = false;
 
-  console.log(`\n[Shutdown] ${signal} received — shutting down gracefully…`);
+  async function shutdown(signal: string): Promise<void> {
+    if (shutdownInProgress) return;
+    shutdownInProgress = true;
 
-  server.close(() => console.log('[Shutdown] HTTP server closed'));
+    logger.info({ signal }, 'shutdown received');
 
-  await pgPool.end();
-  console.log('[Shutdown] PostgreSQL pool drained');
+    server.close(() => logger.info('HTTP server closed'));
 
-  console.log('[Shutdown] Complete');
-  process.exit(0);
+    await pgPool.end();
+    logger.info('PostgreSQL pool drained');
+
+    logger.info('shutdown complete');
+    process.exit(0);
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+bootstrap().catch((err) => {
+  logger.error({ err }, 'bootstrap failed');
+  process.exit(1);
+});

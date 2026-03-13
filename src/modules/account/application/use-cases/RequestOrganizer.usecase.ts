@@ -1,4 +1,5 @@
 import { AccountRepository } from '../../domain/ports/AccountRepository.port.js';
+import { logger } from '../../../../shared/infrastructure/logger.js';
 import { AccountEventRepository } from '../../domain/ports/AccountEventRepository.port.js';
 import { Account } from '../../domain/entities/Account.entity.js';
 import { AccountId } from '../../domain/value-objects/AccountId.vo.js';
@@ -28,7 +29,7 @@ export class RequestOrganizerUseCase {
     const account = Account.createOrganizer(id, callerRef);
     await this.repo.save(account);
     this.eventRepo.save({ accountId: id, type: 'created', performedBy: callerRef })
-      .catch(err => console.error('[RequestOrganizer] event error:', err));
+      .catch(err => logger.warn({ err }, '[RequestOrganizer] event error'));
     return { accountId: id.toPrimitive() };
   }
 }

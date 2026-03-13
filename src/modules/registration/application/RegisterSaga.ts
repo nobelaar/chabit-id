@@ -12,6 +12,7 @@ import { AccountId } from '../../account/domain/value-objects/AccountId.vo.js';
 import { SignInUseCase } from '../../credential/application/use-cases/SignIn.usecase.js';
 import { IdentityRef } from '../../../shared/domain/value-objects/IdentityRef.vo.js';
 import { EmailNotVerifiedError } from '../../identity/domain/errors/Identity.errors.js';
+import { logger } from '../../../shared/infrastructure/logger.js';
 
 export interface RegisterSagaInput {
   verificationId: number;
@@ -79,7 +80,7 @@ export class RegisterSaga {
       verification.linkToIdentity(identityRef);
       await this.verificationRepo.save(verification);
     } catch (err) {
-      console.error('[RegisterSaga] Sub-step 1a (LinkVerification) failed — tolerated:', err);
+      logger.warn({ err }, '[RegisterSaga] Sub-step 1a (LinkVerification) failed — tolerated');
     }
 
     // ── Step 2: CreateCredential ───────────────────────────────────────
@@ -94,7 +95,7 @@ export class RegisterSaga {
     } catch (err) {
       // Compensate Step 1
       await this.identityRepo.hardDelete(IdentityId.fromPrimitive(identityId!)).catch(
-        e => console.error('[RegisterSaga] Compensation Step 1 failed:', e)
+        e => logger.error({ err: e }, '[RegisterSaga] Compensation Step 1 failed')
       );
       throw err;
     }
@@ -110,10 +111,10 @@ export class RegisterSaga {
     } catch (err) {
       // Compensate Step 2 then Step 1
       await this.credentialRepo.hardDelete(CredentialId.fromPrimitive(credentialId!)).catch(
-        e => console.error('[RegisterSaga] Compensation Step 2 failed:', e)
+        e => logger.error({ err: e }, '[RegisterSaga] Compensation Step 2 failed')
       );
       await this.identityRepo.hardDelete(IdentityId.fromPrimitive(identityId!)).catch(
-        e => console.error('[RegisterSaga] Compensation Step 1 failed:', e)
+        e => logger.error({ err: e }, '[RegisterSaga] Compensation Step 1 failed')
       );
       throw err;
     }
@@ -133,7 +134,7 @@ export class RegisterSaga {
     } catch (err) {
       // Don't compensate — identity/credential/account are valid
       // Client should sign in via POST /auth/sign-in
-      console.error('[RegisterSaga] Step 4 (SignIn) failed — user registered but tokens not issued:', err);
+      logger.error({ err }, '[RegisterSaga] Step 4 (SignIn) failed — user registered but tokens not issued');
       throw err;
     }
   }

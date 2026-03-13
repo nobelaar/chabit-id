@@ -1,5 +1,6 @@
 import { Context } from 'hono';
 import { DomainError } from '../../domain/errors/DomainError.js';
+import { logger } from '../../infrastructure/logger.js';
 import {
   VerificationBlockedError,
   VerificationCooldownError,
@@ -40,7 +41,6 @@ interface ErrorResponse {
 }
 
 export function errorHandler(err: Error, c: Context): Response {
-  console.error(`[HTTP Error] ${err.name}: ${err.message}`);
 
   if (err instanceof VerificationBlockedError) {
     return c.json<ErrorResponse>(
@@ -179,6 +179,7 @@ export function errorHandler(err: Error, c: Context): Response {
   if (err instanceof CredentialNotFoundError) return c.json({ error: 'CREDENTIAL_NOT_FOUND', message: err.message }, 404);
 
   if (err instanceof DomainError) {
+    logger.warn({ err: err.name, msg: err.message }, 'domain error');
     return c.json<ErrorResponse>(
       {
         error: 'BAD_REQUEST',
@@ -188,6 +189,7 @@ export function errorHandler(err: Error, c: Context): Response {
     );
   }
 
+  logger.error({ err }, 'unhandled error');
   return c.json<ErrorResponse>(
     {
       error: 'INTERNAL_ERROR',

@@ -5,25 +5,25 @@ import { requestVerificationSchema, verifyEmailSchema } from './verification.sch
 import { RequestEmailVerificationUseCase } from '../../application/use-cases/RequestEmailVerification.usecase.js';
 import { VerifyEmailUseCase } from '../../application/use-cases/VerifyEmail.usecase.js';
 
-const requestLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  limit: 3,
-  keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
-  message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
-});
-
-const verifyLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  limit: 10,
-  keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
-  message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
-});
-
 export function createVerificationRoutes(
   requestUseCase: RequestEmailVerificationUseCase,
   verifyUseCase: VerifyEmailUseCase,
 ): Hono {
   const router = new Hono();
+
+  const requestLimiter = rateLimiter({
+    windowMs: 60 * 1000,
+    limit: 3,
+    keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
+    message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
+  });
+
+  const verifyLimiter = rateLimiter({
+    windowMs: 60 * 1000,
+    limit: 10,
+    keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
+    message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
+  });
 
   // POST /verification/email — Request OTP
   router.post(

@@ -1,8 +1,11 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import type { ServerType } from '@hono/node-server';
+import { swaggerUI } from '@hono/swagger-ui';
 import { errorHandler } from './error-handler.js';
 import { createCorsMiddleware } from './cors.middleware.js';
+import { logger } from '../../infrastructure/logger.js';
+import { openApiSpec } from './openapi.js';
 // Verification
 import { createVerificationRoutes } from '../../../modules/verification/presentation/http/verification.routes.js';
 import { RequestEmailVerificationUseCase } from '../../../modules/verification/application/use-cases/RequestEmailVerification.usecase.js';
@@ -62,6 +65,22 @@ export function createApp(): Hono {
 
   // ── CORS ──────────────────────────────────────────────────────────
   app.use('*', createCorsMiddleware());
+
+  // ── Docs ──────────────────────────────────────────────────────────
+  app.get('/docs', swaggerUI({ url: '/docs/spec' }));
+  app.get('/docs/spec', (c) => c.json(openApiSpec));
+
+  // ── HTTP request logging ───────────────────────────────────────────
+  app.use('*', async (c, next) => {
+    if (c.req.path === '/health') {
+      await next();
+      return;
+    }
+    const start = Date.now();
+    await next();
+    const ms = Date.now() - start;
+    logger.info({ method: c.req.method, path: c.req.path, status: c.res.status, ms }, 'request');
+  });
 
   // ── Infrastructure ────────────────────────────────────────────────
   const verificationRepo = new PostgresEmailVerificationRepository(pgPool);
@@ -182,26 +201,31 @@ export function createApp(): Hono {
 export function startServer(port: number): AppContext {
   const app = createApp();
 
-  console.log(`\n🚀 chabit-identity starting on http://localhost:${port}`);
-
   const server = serve({ fetch: app.fetch, port });
 
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║                   AVAILABLE ENDPOINTS                    ║');
-  console.log('╠══════════════════════════════════════════════════════════╣');
-  console.log(`║  GET    http://localhost:${port}/health                      ║`);
-  console.log(`║  POST   http://localhost:${port}/verification/email           ║`);
-  console.log(`║  POST   http://localhost:${port}/verification/email/verify    ║`);
-  console.log(`║  POST   http://localhost:${port}/register                     ║`);
-  console.log(`║  POST   http://localhost:${port}/auth/sign-in                 ║`);
-  console.log(`║  POST   http://localhost:${port}/auth/refresh                 ║`);
-  console.log(`║  POST   http://localhost:${port}/auth/sign-out                ║`);
-  console.log(`║  POST   http://localhost:${port}/auth/sign-out/all            ║`);
-  console.log(`║  PATCH  http://localhost:${port}/auth/change-password         ║`);
-  console.log(`║  PATCH  http://localhost:${port}/auth/change-username         ║`);
-  console.log(`║  POST   http://localhost:${port}/auth/forgot-password         ║`);
-  console.log(`║  POST   http://localhost:${port}/auth/reset-password          ║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  logger.info(
+    {
+      service: 'chabit-identity',
+      port,
+      endpoints: [
+        'GET  /health',
+        'GET  /docs',
+        'GET  /docs/spec',
+        'POST /verification/email',
+        'POST /verification/email/verify',
+        'POST /register',
+        'POST /auth/sign-in',
+        'POST /auth/refresh',
+        'POST /auth/sign-out',
+        'POST /auth/sign-out/all',
+        'PATCH /auth/change-password',
+        'PATCH /auth/change-username',
+        'POST /auth/forgot-password',
+        'POST /auth/reset-password',
+      ],
+    },
+    'server started',
+  );
 
   return { app, server };
 }

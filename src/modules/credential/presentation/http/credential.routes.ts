@@ -18,20 +18,6 @@ import { ChangeUsernameUseCase } from '../../application/use-cases/ChangeUsernam
 import { ResetPasswordUseCase } from '../../application/use-cases/ResetPassword.usecase.js';
 import { RequestEmailVerificationUseCase } from '../../../verification/application/use-cases/RequestEmailVerification.usecase.js';
 
-const forgotPasswordLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  limit: 3,
-  keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
-  message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
-});
-
-const resetPasswordLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  limit: 10,
-  keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
-  message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
-});
-
 // NOTE: RevokeToken requires the session ID from the JWT.
 // For now, the route extracts 'x-session-id' header (set by the client from the JWT sid claim).
 // In a real JWT middleware setup this would be extracted from the verified token.
@@ -46,6 +32,20 @@ export function createCredentialRoutes(
   requestVerificationUseCase: RequestEmailVerificationUseCase,
 ): Hono {
   const router = new Hono();
+
+  const forgotPasswordLimiter = rateLimiter({
+    windowMs: 60 * 1000,
+    limit: 3,
+    keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
+    message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
+  });
+
+  const resetPasswordLimiter = rateLimiter({
+    windowMs: 60 * 1000,
+    limit: 10,
+    keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
+    message: { error: 'RATE_LIMITED', message: 'Too many requests. Try again later.' },
+  });
 
   // POST /auth/sign-in
   router.post(

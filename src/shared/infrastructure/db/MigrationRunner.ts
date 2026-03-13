@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool, PoolClient } from 'pg';
+import { logger } from '../logger.js';
 
 export class MigrationRunner {
   private readonly migrationsDir: string;
@@ -15,7 +16,7 @@ export class MigrationRunner {
   async run(): Promise<void> {
     const client = await this.pool.connect();
     try {
-      console.log('🚀 Starting database migrations...');
+      logger.info('Starting database migrations');
 
       await client.query(`SET search_path TO public`);
       await this.ensureMigrationsTable(client);
@@ -28,24 +29,24 @@ export class MigrationRunner {
         .sort();
 
       if (pendingMigrations.length === 0) {
-        console.log('✅ Database is up to date. No new migrations.');
+        logger.info('Database is up to date — no pending migrations');
         return;
       }
 
-      console.log(`📦 Found ${pendingMigrations.length} pending migrations.`);
+      logger.info({ count: pendingMigrations.length }, 'Pending migrations found');
 
       await client.query('BEGIN');
 
       for (const file of pendingMigrations) {
-        console.log(`▶️  Applying: ${file}`);
+        logger.info({ file }, 'Applying migration');
         await this.applyMigration(client, file);
       }
 
       await client.query('COMMIT');
-      console.log('✅ All migrations applied successfully.');
+      logger.info('All migrations applied successfully');
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('❌ Migration failed. Rolling back changes.');
+      logger.error({ err: error }, 'Migration failed — rolling back');
       throw error;
     } finally {
       client.release();
@@ -72,7 +73,7 @@ export class MigrationRunner {
       const files = await fs.readdir(this.migrationsDir);
       return files.filter((f) => f.endsWith('.sql'));
     } catch (error) {
-      console.error(`Error reading migrations directory: ${this.migrationsDir}`);
+      logger.error({ dir: this.migrationsDir }, 'Error reading migrations directory');
       throw error;
     }
   }

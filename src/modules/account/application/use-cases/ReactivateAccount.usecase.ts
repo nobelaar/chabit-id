@@ -1,4 +1,5 @@
 import { AccountRepository } from '../../domain/ports/AccountRepository.port.js';
+import { logger } from '../../../../shared/infrastructure/logger.js';
 import { AccountEventRepository } from '../../domain/ports/AccountEventRepository.port.js';
 import { AccountId } from '../../domain/value-objects/AccountId.vo.js';
 import { AccountType } from '../../domain/value-objects/AccountType.vo.js';
@@ -20,6 +21,6 @@ export class ReactivateAccountUseCase {
     account.reactivate();
     await this.repo.save(account);
     this.eventRepo.save({ accountId: account.getId(), type: 'reactivated', performedBy: callerRef })
-      .catch(err => console.error('[ReactivateAccount] event error:', err));
+      .catch(err => logger.warn({ err }, '[ReactivateAccount] event error'));
   }
 }

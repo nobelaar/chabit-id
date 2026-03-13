@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: chabit
+      POSTGRES_PASSWORD: chabit
+      POSTGRES_DB: chabit_identity
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chabit -d chabit_identity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: chabit
+      PG_PASSWORD: chabit
+      PG_DATABASE: chabit_identity
+      PG_POOL_MAX: 20
+      PG_IDLE_TIMEOUT_MS: 30000
+      PG_CONNECTION_TIMEOUT_MS: 5000
+      JWT_SECRET: ${JWT_SECRET}
+      OTP_HMAC_SECRET: ${OTP_HMAC_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  postgres_data:

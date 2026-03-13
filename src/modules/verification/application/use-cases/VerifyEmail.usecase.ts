@@ -1,4 +1,5 @@
 import { Email } from '../../../../shared/domain/value-objects/Email.vo.js';
+import { logger } from '../../../../shared/infrastructure/logger.js';
 import { OtpCode } from '../../domain/value-objects/OtpCode.vo.js';
 import { EmailVerificationRepository } from '../../domain/ports/EmailVerificationRepository.port.js';
 import { EmailEventRepository } from '../../domain/ports/EmailEventRepository.port.js';
@@ -93,19 +94,19 @@ export class VerifyEmailUseCase {
       case 'expired':
         this.eventRepo
           .save({ email: outcome.email, type: 'expired', verificationId: outcome.verificationId })
-          .catch((err) => console.error('[VerifyEmail] Failed to save event:', err));
+          .catch((err) => logger.warn({ err }, '[VerifyEmail] Failed to save event'));
         throw new VerificationExpiredError();
 
       case 'used':
         this.eventRepo
           .save({ email: outcome.email, type: 'verified', verificationId: outcome.verificationId })
-          .catch((err) => console.error('[VerifyEmail] Failed to save event:', err));
+          .catch((err) => logger.warn({ err }, '[VerifyEmail] Failed to save event'));
         return { verificationId: outcome.verificationId, usedAt: outcome.usedAt };
 
       case 'blocked': {
         this.eventRepo
           .save({ email: outcome.email, type: 'blocked', verificationId: outcome.verificationId })
-          .catch((err) => console.error('[VerifyEmail] Failed to save event:', err));
+          .catch((err) => logger.warn({ err }, '[VerifyEmail] Failed to save event'));
         const retryAfter = new Date(outcome.blockedAt.getTime() + BLOCKED_COOLDOWN_MS);
         throw new VerificationBlockedError(retryAfter);
       }
@@ -118,7 +119,7 @@ export class VerifyEmailUseCase {
             metadata: { attemptsRemaining: outcome.attemptsRemaining },
             verificationId: outcome.verificationId,
           })
-          .catch((err) => console.error('[VerifyEmail] Failed to save event:', err));
+          .catch((err) => logger.warn({ err }, '[VerifyEmail] Failed to save event'));
         throw new InvalidOtpError(outcome.attemptsRemaining);
     }
   }
