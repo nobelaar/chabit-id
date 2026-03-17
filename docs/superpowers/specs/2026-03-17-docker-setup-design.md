@@ -82,7 +82,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 COPY prisma/ ./prisma/
 RUN npm ci --omit=dev
-RUN npx prisma generate
+RUN node_modules/.bin/prisma generate
 COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main"]
@@ -91,10 +91,10 @@ CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main"]
 **Key decisions:**
 - `prisma/` is copied before `npm ci` in builder so `prisma generate` finds the schema
 - `prisma generate` runs in both stages: builder (for the build) and runtime (to regenerate the typed client against the production `node_modules`)
+- `node_modules/.bin/prisma` used consistently — avoids `npx` resolution issues
 - `prisma/` is copied to runtime so `migrate deploy` can find the migration files
-- `CMD` uses `node_modules/.bin/prisma` directly (avoids `npx` resolution issues when `prisma` CLI is a devDependency)
 - `migrate deploy` is idempotent — safe to run on every restart
-- **Prerequisite:** `prisma` CLI must be in `dependencies` (not only `devDependencies`) in `package.json`
+- **Prerequisite — `package.json`:** both `prisma` (CLI) and `@prisma/client` must be in `dependencies` (not `devDependencies`). Without this, `npm ci --omit=dev` strips them and the runtime stage fails.
 
 ### docker-compose.yml (new)
 
