@@ -51,7 +51,12 @@ import { ReRequestOrganizerUseCase } from '../../../modules/account/application/
 import { DeactivateAccountUseCase } from '../../../modules/account/application/use-cases/DeactivateAccount.usecase.js';
 import { ReactivateAccountUseCase } from '../../../modules/account/application/use-cases/ReactivateAccount.usecase.js';
 import { GetAccountsByIdentityUseCase } from '../../../modules/account/application/use-cases/GetAccountsByIdentity.usecase.js';
+import { RequestStaffUseCase } from '../../../modules/account/application/use-cases/RequestStaff.usecase.js';
+import { ReRequestStaffUseCase } from '../../../modules/account/application/use-cases/ReRequestStaff.usecase.js';
 import { createAccountRoutes } from '../../../modules/account/presentation/http/account.routes.js';
+import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
+import { createIdentityRoutes } from '../../../modules/identity/presentation/http/identity.routes.js';
+import { HttpWebhookSender } from '../../infrastructure/http/HttpWebhookSender.js';
 
 export interface AppContext {
   app: Hono;
@@ -163,6 +168,10 @@ export function createApp(): Hono {
   const _deactivateAccount = new DeactivateAccountUseCase(accountRepo, accountEventRepo);
   const _reactivateAccount = new ReactivateAccountUseCase(accountRepo, accountEventRepo);
   const getAccountsByIdentity = new GetAccountsByIdentityUseCase(accountRepo);
+  const requestStaff = new RequestStaffUseCase(accountRepo, accountEventRepo);
+  const reRequestStaff = new ReRequestStaffUseCase(accountRepo, accountEventRepo);
+  const getIdentity = new GetIdentityUseCase(identityRepo);
+  const webhookSender = new HttpWebhookSender(process.env['WEBHOOK_SECRET'] ?? '');
 
   // ── Routes ────────────────────────────────────────────────────────
   const verificationRoutes = createVerificationRoutes(requestVerification, verifyEmail);
@@ -186,8 +195,13 @@ export function createApp(): Hono {
     rejectOrganizer,
     reRequestOrganizer,
     getAccountsByIdentity,
+    requestStaff,
+    reRequestStaff,
   );
   app.route('/accounts', accountRoutes);
+
+  const identityRoutes = createIdentityRoutes(getIdentity);
+  app.route('/identities', identityRoutes);
 
   // ── Registration ──────────────────────────────────────────────────
   const registerSaga = new RegisterSaga(
@@ -199,6 +213,7 @@ export function createApp(): Hono {
     createAccountUseCase,
     accountRepo,
     signIn,
+    webhookSender,
   );
   const registrationRoutes = createRegistrationRoutes(registerSaga);
   app.route('/register', registrationRoutes);
@@ -233,6 +248,9 @@ export function startServer(port: number): AppContext {
         'PATCH /auth/change-username',
         'POST /auth/forgot-password',
         'POST /auth/reset-password',
+        'POST /accounts/staff-request',
+        'POST /accounts/staff-re-request',
+        'GET  /identities/:identityRef',
       ],
     },
     'server started',
