@@ -171,7 +171,11 @@ export function createApp(): Hono {
   const requestStaff = new RequestStaffUseCase(accountRepo, accountEventRepo);
   const reRequestStaff = new ReRequestStaffUseCase(accountRepo, accountEventRepo);
   const getIdentity = new GetIdentityUseCase(identityRepo);
-  const webhookSender = new HttpWebhookSender(process.env['WEBHOOK_SECRET'] ?? '');
+  const webhookSecret = process.env['WEBHOOK_SECRET'] ?? '';
+  if (!webhookSecret && process.env['WEBHOOK_BACKEND_URL']) {
+    logger.warn('[server] WEBHOOK_SECRET is not set but WEBHOOK_BACKEND_URL is configured — webhook signatures will be invalid');
+  }
+  const webhookSender = new HttpWebhookSender(webhookSecret);
 
   // ── Routes ────────────────────────────────────────────────────────
   const verificationRoutes = createVerificationRoutes(requestVerification, verifyEmail);
