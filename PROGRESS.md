@@ -131,7 +131,7 @@ NodemailerEmailSender (SMTP adapter).
 
 ---
 
-### Plan de Migración Auth — EN PROGRESO 🔄
+### Plan de Migración Auth — COMPLETADA ✅
 
 **Goal:** Migrar auth/registro de backend-chabit (NestJS) a chabit-identity (Hono). chabit-identity emite JWTs; backend-chabit los valida localmente y recibe webhook HMAC para crear wallet Blnk.
 
@@ -145,12 +145,12 @@ NodemailerEmailSender (SMTP adapter).
 | Task 1: Add STAFF to AccountType VO | ✅ `fa8e7a3` |
 | Task 2: Generalize Account guards + add `createStaff()` | ✅ `50b1ace` |
 | Task 3: Add STAFF tests to Account.entity.spec.ts | ✅ `50b1ace` |
-| Task 4: Create RequestStaff use case | ⏳ pendiente |
-| Task 5: Create ReRequestStaff use case | ⏳ pendiente |
-| Task 6: Add STAFF routes + `GET /identities/:identityRef` | ⏳ pendiente |
-| Task 7: WebhookSender port + HttpWebhookSender | ⏳ pendiente |
-| Task 8: Wire WebhookSender into RegisterSaga | ⏳ pendiente |
-| Task 9: Wire server.ts + update .env.example | ⏳ pendiente |
+| Task 4: Create RequestStaff use case | ✅ |
+| Task 5: Create ReRequestStaff use case | ✅ |
+| Task 6: Add STAFF routes + `GET /identities/:identityRef` | ✅ |
+| Task 7: WebhookSender port + HttpWebhookSender | ✅ |
+| Task 8: Wire WebhookSender into RegisterSaga | ✅ |
+| Task 9: Wire server.ts + update .env.example | ✅ |
 
 #### backend-chabit — rama `feat/auth-migration`
 
