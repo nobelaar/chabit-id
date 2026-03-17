@@ -116,6 +116,63 @@ POST /register → 201 { accessToken, updateToken }
 
 ---
 
+---
+
+### Iteración 6 — COMPLETADA ✅
+
+NodemailerEmailSender (SMTP adapter).
+
+**Construido:**
+- `NodemailerEmailSender`: implementa `EmailSender` port vía nodemailer
+- `src/index.ts`: instancia `NodemailerEmailSender` cuando `SMTP_HOST` está seteado, sino usa `StubEmailSender`
+- `.env.example` + README actualizados con vars SMTP
+
+**Tests:** 162 passing (+3 nuevos — NodemailerEmailSender.spec)
+
+---
+
+### Plan de Migración Auth — EN PROGRESO 🔄
+
+**Goal:** Migrar auth/registro de backend-chabit (NestJS) a chabit-identity (Hono). chabit-identity emite JWTs; backend-chabit los valida localmente y recibe webhook HMAC para crear wallet Blnk.
+
+**Plan:** `docs/superpowers/plans/2026-03-16-chabit-identity-migration.md`
+**Spec:** `docs/superpowers/specs/2026-03-16-chabit-identity-migration-design.md`
+
+#### chabit-identity — rama `feat/auth-migration`
+
+| Tarea | Estado |
+|-------|--------|
+| Task 1: Add STAFF to AccountType VO | ✅ `fa8e7a3` |
+| Task 2: Generalize Account guards + add `createStaff()` | ✅ `50b1ace` |
+| Task 3: Add STAFF tests to Account.entity.spec.ts | ✅ `50b1ace` |
+| Task 4: Create RequestStaff use case | ⏳ pendiente |
+| Task 5: Create ReRequestStaff use case | ⏳ pendiente |
+| Task 6: Add STAFF routes + `GET /identities/:identityRef` | ⏳ pendiente |
+| Task 7: WebhookSender port + HttpWebhookSender | ⏳ pendiente |
+| Task 8: Wire WebhookSender into RegisterSaga | ⏳ pendiente |
+| Task 9: Wire server.ts + update .env.example | ⏳ pendiente |
+
+#### backend-chabit — rama `feat/auth-migration`
+
+| Tarea | Estado |
+|-------|--------|
+| Task 10: Prisma schema migration (remove password/role/status) | ✅ |
+| Task 11: AuthGuard — `deriveRole()` desde `accounts` array del JWT | ✅ |
+| Task 12: Enable rawBody in main.ts | ✅ |
+| Task 13: WebhooksModule + WebhooksController (HMAC fail-closed) | ✅ `9afcd1c` |
+| Task 14: ChabitIdentityClient integration + UserService.ensureUser | ✅ `007a533` |
+| Task 15: Resolver `req.user.sub` → `user.id` en 8 controllers | ✅ `eaec429` |
+| Task 16: Verify wallet-missing coverage | ✅ `b17b481` |
+| Task 17: Delete obsolete AuthService + AuthController | ✅ `398da9b` |
+| Task 18: Delete obsolete UserService methods | ✅ `15ca7db` |
+| Task 19: Clean up MailModule OTP methods | ✅ `15ca7db` |
+| Task 20: Final verification (test suite) | ✅ `faf7aaf` |
+
+**Tests backend-chabit:** 370/418 passing — 12 suites con fallas pre-existentes (no relacionadas a la migración)
+**Tests chabit-identity:** 162/162 passing
+
+---
+
 ## Decisiones técnicas
 
 | Decisión | Motivo |
