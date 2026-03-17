@@ -68,6 +68,7 @@ Multi-stage build:
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
+COPY prisma/ ./prisma/
 RUN npm ci
 COPY tsconfig*.json ./
 COPY src/ ./src/
@@ -79,19 +80,21 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
-RUN npm ci --omit=dev
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY prisma/ ./prisma/
+RUN npm ci --omit=dev
+RUN npx prisma generate
+COPY --from=builder /app/dist ./dist
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main"]
 ```
 
 **Key decisions:**
-- `prisma generate` runs in builder so the generated client is available at runtime
-- `node_modules/.prisma` (the compiled query engine) is copied from builder to runtime
-- `prisma/` directory is copied to runtime so `migrate deploy` can find migration files
-- `CMD` runs `migrate deploy` then starts the app — idempotent, safe to run on every restart
+- `prisma/` is copied before `npm ci` in builder so `prisma generate` finds the schema
+- `prisma generate` runs in both stages: builder (for the build) and runtime (to regenerate the typed client against the production `node_modules`)
+- `prisma/` is copied to runtime so `migrate deploy` can find the migration files
+- `CMD` uses `node_modules/.bin/prisma` directly (avoids `npx` resolution issues when `prisma` CLI is a devDependency)
+- `migrate deploy` is idempotent — safe to run on every restart
+- **Prerequisite:** `prisma` CLI must be in `dependencies` (not only `devDependencies`) in `package.json`
 
 ### docker-compose.yml (new)
 
