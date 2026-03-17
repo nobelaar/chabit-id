@@ -4,6 +4,8 @@ import { ApproveOrganizerUseCase } from '../../application/use-cases/ApproveOrga
 import { RejectOrganizerUseCase } from '../../application/use-cases/RejectOrganizer.usecase.js';
 import { ReRequestOrganizerUseCase } from '../../application/use-cases/ReRequestOrganizer.usecase.js';
 import { GetAccountsByIdentityUseCase } from '../../application/use-cases/GetAccountsByIdentity.usecase.js';
+import { RequestStaffUseCase } from '../../application/use-cases/RequestStaff.usecase.js';
+import { ReRequestStaffUseCase } from '../../application/use-cases/ReRequestStaff.usecase.js';
 
 // NOTE: These routes require JWT auth middleware (Iteración futura).
 // For now, callerRef is extracted from x-identity-id header (placeholder).
@@ -13,6 +15,8 @@ export function createAccountRoutes(
   rejectOrganizer: RejectOrganizerUseCase,
   reRequestOrganizer: ReRequestOrganizerUseCase,
   getAccountsByIdentity: GetAccountsByIdentityUseCase,
+  requestStaff: RequestStaffUseCase,
+  reRequestStaff: ReRequestStaffUseCase,
 ): Hono {
   const router = new Hono();
 
@@ -23,6 +27,13 @@ export function createAccountRoutes(
   router.post('/organizer-request', async (c) => {
     const callerRef = getCallerRef(c);
     const result = await requestOrganizer.execute({ callerRef });
+    return c.json(result, 201);
+  });
+
+  // POST /accounts/staff-request
+  router.post('/staff-request', async (c) => {
+    const callerRef = getCallerRef(c);
+    const result = await requestStaff.execute({ callerRef });
     return c.json(result, 201);
   });
 
@@ -46,6 +57,13 @@ export function createAccountRoutes(
   router.post('/organizer-re-request', async (c) => {
     const callerRef = getCallerRef(c);
     await reRequestOrganizer.execute({ callerRef });
+    return c.json({ message: 'Re-requested' }, 200);
+  });
+
+  // POST /accounts/staff-re-request
+  router.post('/staff-re-request', async (c) => {
+    const callerRef = getCallerRef(c);
+    await reRequestStaff.execute({ callerRef });
     return c.json({ message: 'Re-requested' }, 200);
   });
 

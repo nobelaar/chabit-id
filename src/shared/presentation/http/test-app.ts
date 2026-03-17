@@ -44,9 +44,20 @@ import { ApproveOrganizerUseCase } from '../../../modules/account/application/us
 import { RejectOrganizerUseCase } from '../../../modules/account/application/use-cases/RejectOrganizer.usecase.js';
 import { ReRequestOrganizerUseCase } from '../../../modules/account/application/use-cases/ReRequestOrganizer.usecase.js';
 import { GetAccountsByIdentityUseCase } from '../../../modules/account/application/use-cases/GetAccountsByIdentity.usecase.js';
+import { RequestStaffUseCase } from '../../../modules/account/application/use-cases/RequestStaff.usecase.js';
+import { ReRequestStaffUseCase } from '../../../modules/account/application/use-cases/ReRequestStaff.usecase.js';
+// Identity
+import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
+import { createIdentityRoutes } from '../../../modules/identity/presentation/http/identity.routes.js';
+// Webhook stub
+import type { WebhookSender } from '../../infrastructure/http/WebhookSender.port.js';
 // Registration
 import { RegisterSaga } from '../../../modules/registration/application/RegisterSaga.js';
 import { createRegistrationRoutes } from '../../../modules/registration/presentation/http/registration.routes.js';
+
+class StubWebhookSender implements WebhookSender {
+  async send(_url: string, _payload: Record<string, unknown>): Promise<void> {}
+}
 
 // No-op transaction runner for InMemory repos (they don't need real DB transactions)
 class NoopTransactionRunner implements TransactionRunner {
@@ -119,6 +130,10 @@ export function createTestApp(): TestApp {
   const rejectOrganizer = new RejectOrganizerUseCase(accountRepo, accountEventRepo);
   const reRequestOrganizer = new ReRequestOrganizerUseCase(accountRepo, accountEventRepo);
   const getAccountsByIdentity = new GetAccountsByIdentityUseCase(accountRepo);
+  const requestStaff = new RequestStaffUseCase(accountRepo, accountEventRepo);
+  const reRequestStaff = new ReRequestStaffUseCase(accountRepo, accountEventRepo);
+  const getIdentity = new GetIdentityUseCase(identityRepo);
+  const webhookSender = new StubWebhookSender();
 
   // ── Routes ────────────────────────────────────────────────────────
   app.route('/verification', createVerificationRoutes(requestVerification, verifyEmail));
@@ -139,8 +154,10 @@ export function createTestApp(): TestApp {
 
   app.route(
     '/accounts',
-    createAccountRoutes(requestOrganizer, approveOrganizer, rejectOrganizer, reRequestOrganizer, getAccountsByIdentity),
+    createAccountRoutes(requestOrganizer, approveOrganizer, rejectOrganizer, reRequestOrganizer, getAccountsByIdentity, requestStaff, reRequestStaff),
   );
+
+  app.route('/identities', createIdentityRoutes(getIdentity));
 
   const registerSaga = new RegisterSaga(
     verificationRepo,
@@ -151,6 +168,7 @@ export function createTestApp(): TestApp {
     createAccountUseCase,
     accountRepo,
     signIn,
+    webhookSender,
   );
   app.route('/register', createRegistrationRoutes(registerSaga));
 

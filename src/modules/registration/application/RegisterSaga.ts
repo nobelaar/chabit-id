@@ -13,6 +13,7 @@ import { SignInUseCase } from '../../credential/application/use-cases/SignIn.use
 import { IdentityRef } from '../../../shared/domain/value-objects/IdentityRef.vo.js';
 import { EmailNotVerifiedError } from '../../identity/domain/errors/Identity.errors.js';
 import { logger } from '../../../shared/infrastructure/logger.js';
+import type { WebhookSender } from '../../../shared/infrastructure/http/WebhookSender.port.js';
 
 export interface RegisterSagaInput {
   verificationId: number;
@@ -42,6 +43,7 @@ export class RegisterSaga {
     private readonly createAccount: CreateAccountUseCase,
     private readonly accountRepo: AccountRepository,
     private readonly signIn: SignInUseCase,
+    private readonly webhookSender: WebhookSender,
   ) {}
 
   async execute(input: RegisterSagaInput): Promise<RegisterSagaResult> {
@@ -128,6 +130,22 @@ export class RegisterSaga {
         userAgent: input.userAgent,
         ipAddress: input.ipAddress,
       });
+
+      const webhookUrl = process.env['WEBHOOK_BACKEND_URL'];
+      if (webhookUrl) {
+        void this.webhookSender.send(webhookUrl, {
+          event: 'identity.registered',
+          identityRef: identityId!,
+          username: input.username,
+          fullName: input.fullName,
+          email: input.email,
+          phone: input.phone,
+          nationality: input.nationality,
+          country: input.country,
+          registeredAt: new Date().toISOString(),
+        }).catch(err => logger.warn({ err }, '[RegisterSaga] webhook failed'));
+      }
+
       // suppress unused variable warning
       void accountId;
       return tokens;

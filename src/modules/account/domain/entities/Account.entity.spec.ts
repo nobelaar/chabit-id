@@ -125,6 +125,57 @@ describe('Account entity', () => {
     });
   });
 
+  describe('createStaff()', () => {
+    it('starts with type STAFF and status PENDING', () => {
+      const a = Account.createStaff(makeId(), makeRef());
+      expect(a.getType().toPrimitive()).toBe('STAFF');
+      expect(a.getStatus().toPrimitive()).toBe('PENDING');
+      expect(a.getCreatedBy()).toBeUndefined();
+    });
+  });
+
+  describe('approve() — STAFF', () => {
+    it('transitions PENDING STAFF to ACTIVE', () => {
+      const a = Account.createStaff(makeId(), makeRef());
+      a.approve();
+      expect(a.getStatus().toPrimitive()).toBe('ACTIVE');
+    });
+
+    it('throws on already ACTIVE staff', () => {
+      const a = Account.createStaff(makeId(), makeRef());
+      a.approve();
+      expect(() => a.approve()).toThrow(InvalidStatusTransitionError);
+    });
+  });
+
+  describe('reject() — STAFF', () => {
+    it('transitions PENDING STAFF to REJECTED', () => {
+      const a = Account.createStaff(makeId(), makeRef());
+      a.reject();
+      expect(a.getStatus().toPrimitive()).toBe('REJECTED');
+    });
+
+    it('throws on already ACTIVE staff', () => {
+      const a = Account.createStaff(makeId(), makeRef());
+      a.approve();
+      expect(() => a.reject()).toThrow(InvalidStatusTransitionError);
+    });
+  });
+
+  describe('reRequest() — STAFF', () => {
+    it('transitions REJECTED STAFF back to PENDING', () => {
+      const a = Account.createStaff(makeId(), makeRef());
+      a.reject();
+      a.reRequest();
+      expect(a.getStatus().toPrimitive()).toBe('PENDING');
+    });
+
+    it('throws if STAFF is PENDING (not REJECTED)', () => {
+      const a = Account.createStaff(makeId(), makeRef());
+      expect(() => a.reRequest()).toThrow(InvalidStatusTransitionError);
+    });
+  });
+
   describe('fromPrimitive() / toPrimitive()', () => {
     it('round-trips correctly', () => {
       const a = Account.createAdmin(makeId(), makeRef(), makeRef2());

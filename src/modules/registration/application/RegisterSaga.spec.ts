@@ -37,7 +37,13 @@ import { AccountId } from '../../account/domain/value-objects/AccountId.vo.js';
 // Errors
 import { EmailNotVerifiedError } from '../../identity/domain/errors/Identity.errors.js';
 
+import type { WebhookSender } from '../../../shared/infrastructure/http/WebhookSender.port.js';
+
 // ── Stubs ─────────────────────────────────────────────────────────────────────
+
+class StubWebhookSender implements WebhookSender {
+  async send(_url: string, _payload: Record<string, unknown>): Promise<void> {}
+}
 
 class StubPasswordHasher implements PasswordHasher {
   async hash(raw: RawPassword): Promise<PasswordHash> {
@@ -92,6 +98,7 @@ function buildSaga() {
   const createCredentialUseCase = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
   const createAccountUseCase = new CreateAccountUseCase(accountRepo, accountEventRepo);
   const signInUseCase = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
+  const webhookSender = new StubWebhookSender();
 
   const saga = new RegisterSaga(
     verificationRepo,
@@ -102,6 +109,7 @@ function buildSaga() {
     createAccountUseCase,
     accountRepo,
     signInUseCase,
+    webhookSender,
   );
 
   return { saga, verificationRepo, identityRepo, credentialRepo, accountRepo };
@@ -266,6 +274,7 @@ describe('RegisterSaga', () => {
       const createCredentialUseCase = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
       const signInUseCase = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
 
+      const stubWebhook = new StubWebhookSender();
       const sagaWithFailingAccount = new RegisterSaga(
         verificationRepo,
         createIdentityUseCase,
@@ -275,6 +284,7 @@ describe('RegisterSaga', () => {
         failingCreateAccount,
         failingAccountRepo,
         signInUseCase,
+        stubWebhook,
       );
 
       const verification = makeUsedVerification(1, 'john@example.com');
