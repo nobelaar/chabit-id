@@ -21,6 +21,7 @@ export interface RegisterOptions {
   email?: string;
   username?: string;
   password?: string;
+  phone?: string;
 }
 
 export async function registerTestUser(
@@ -31,6 +32,7 @@ export async function registerTestUser(
   const email = overrides.email ?? 'testuser@example.com';
   const username = overrides.username ?? 'testuser';
   const password = overrides.password ?? 'password123';
+  const phone = overrides.phone ?? '1234567890';
 
   // 1. Request email verification
   const vRes = await app.request('/verification/email', {
@@ -58,7 +60,7 @@ export async function registerTestUser(
       verificationId,
       fullName: 'Test User',
       email,
-      phone: '1234567890',
+      phone,
       nationality: 'Argentine',
       country: 'Argentina',
       username,

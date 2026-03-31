@@ -84,8 +84,7 @@ describe('Check Endpoints E2E', () => {
   });
 
   it('GET /check/phone returns available:false for taken phone', async () => {
-    // registerTestUser seeds phone = '1234567890'
-    await registerTestUser(app, emailSender);
+    await registerTestUser(app, emailSender, { phone: '1234567890' });
     const res = await app.request('/check/phone?value=1234567890');
     expect(res.status).toBe(200);
     const body = await res.json() as { available: boolean };
