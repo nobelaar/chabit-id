@@ -56,6 +56,7 @@ import { ReRequestStaffUseCase } from '../../../modules/account/application/use-
 import { createAccountRoutes } from '../../../modules/account/presentation/http/account.routes.js';
 import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
 import { createIdentityRoutes } from '../../../modules/identity/presentation/http/identity.routes.js';
+import { createCheckRoutes } from '../../../modules/check/presentation/http/check.routes.js';
 import { HttpWebhookSender } from '../../infrastructure/http/HttpWebhookSender.js';
 
 export interface AppContext {
@@ -211,6 +212,9 @@ export function createApp(): Hono {
   const identityRoutes = createIdentityRoutes(getIdentity);
   app.route('/identities', identityRoutes);
 
+  const checkRoutes = createCheckRoutes(identityRepo, credentialRepo);
+  app.route('/check', checkRoutes);
+
   // ── Registration ──────────────────────────────────────────────────
   const registerSaga = new RegisterSaga(
     verificationRepo,
@@ -259,6 +263,9 @@ export function startServer(port: number): AppContext {
         'POST /accounts/staff-request',
         'POST /accounts/staff-re-request',
         'GET  /identities/:identityRef',
+        'GET  /check/username',
+        'GET  /check/email',
+        'GET  /check/phone',
       ],
     },
     'server started',

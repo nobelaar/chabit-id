@@ -54,6 +54,8 @@ import type { WebhookSender } from '../../infrastructure/http/WebhookSender.port
 // Registration
 import { RegisterSaga } from '../../../modules/registration/application/RegisterSaga.js';
 import { createRegistrationRoutes } from '../../../modules/registration/presentation/http/registration.routes.js';
+// Check
+import { createCheckRoutes } from '../../../modules/check/presentation/http/check.routes.js';
 
 class StubWebhookSender implements WebhookSender {
   async send(_url: string, _payload: Record<string, unknown>): Promise<void> {}
@@ -158,6 +160,8 @@ export function createTestApp(): TestApp {
   );
 
   app.route('/identities', createIdentityRoutes(getIdentity));
+
+  app.route('/check', createCheckRoutes(identityRepo, credentialRepo));
 
   const registerSaga = new RegisterSaga(
     verificationRepo,
