@@ -161,10 +161,19 @@ async function seedUser(
   }
 
   if (user.role === 'ADMIN') {
-    const { CreateAccountUseCase: CAU } = await import('./modules/account/application/use-cases/CreateAccount.usecase.js');
-    const accountEventRepo = (accountRepo as any).eventRepo as PostgresAccountEventRepository;
-    const createAccount = new CAU(accountRepo, accountEventRepo);
-    await createAccount.execute({ identityRef, type: 'ADMIN', callerRef: identityRef }).catch(() => {});
+    // Bypass CreateAccountUseCase permission check — no existing admin to authorize the first one.
+    // Create the ADMIN account directly via the repo.
+    const { Account } = await import('./modules/account/domain/entities/Account.entity.js');
+    const { AccountId } = await import('./modules/account/domain/value-objects/AccountId.vo.js');
+    const { IdentityRef: IR } = await import('./shared/domain/value-objects/IdentityRef.vo.js');
+    const existing = await accountRepo.findByIdentityRefAndType(
+      IR.fromPrimitive(identityRef),
+      (await import('./modules/account/domain/value-objects/AccountType.vo.js')).AccountType.admin(),
+    );
+    if (!existing) {
+      const adminAccount = Account.createAdmin(AccountId.generate(), IR.fromPrimitive(identityRef), IR.fromPrimitive(identityRef));
+      await accountRepo.save(adminAccount);
+    }
   }
 
   logger.info({ email: user.email, role: user.role, identityRef }, '[seed] user created');
