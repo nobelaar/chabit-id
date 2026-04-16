@@ -48,6 +48,11 @@ export class Account {
     return new Account({ id, identityRef, type: AccountType.staff(), status: AccountStatus.pending(), createdBy: undefined, createdAt: now, updatedAt: now });
   }
 
+  static createStaffByOrganizer(id: AccountId, identityRef: IdentityRef, createdBy: IdentityRef): Account {
+    const now = new Date();
+    return new Account({ id, identityRef, type: AccountType.staff(), status: AccountStatus.active(), createdBy, createdAt: now, updatedAt: now });
+  }
+
   static createAdmin(id: AccountId, identityRef: IdentityRef, createdBy: IdentityRef): Account {
     const now = new Date();
     return new Account({ id, identityRef, type: AccountType.admin(), status: AccountStatus.active(), createdBy, createdAt: now, updatedAt: now });

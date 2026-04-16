@@ -44,7 +44,7 @@ import { ApproveOrganizerUseCase } from '../../../modules/account/application/us
 import { RejectOrganizerUseCase } from '../../../modules/account/application/use-cases/RejectOrganizer.usecase.js';
 import { ReRequestOrganizerUseCase } from '../../../modules/account/application/use-cases/ReRequestOrganizer.usecase.js';
 import { GetAccountsByIdentityUseCase } from '../../../modules/account/application/use-cases/GetAccountsByIdentity.usecase.js';
-import { RequestStaffUseCase } from '../../../modules/account/application/use-cases/RequestStaff.usecase.js';
+import { AddStaffByOrganizerUseCase } from '../../../modules/account/application/use-cases/AddStaffByOrganizer.usecase.js';
 import { ReRequestStaffUseCase } from '../../../modules/account/application/use-cases/ReRequestStaff.usecase.js';
 // Identity
 import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
@@ -132,7 +132,7 @@ export function createTestApp(): TestApp {
   const rejectOrganizer = new RejectOrganizerUseCase(accountRepo, accountEventRepo);
   const reRequestOrganizer = new ReRequestOrganizerUseCase(accountRepo, accountEventRepo);
   const getAccountsByIdentity = new GetAccountsByIdentityUseCase(accountRepo);
-  const requestStaff = new RequestStaffUseCase(accountRepo, accountEventRepo);
+  const addStaffByOrganizer = new AddStaffByOrganizerUseCase(accountRepo, accountEventRepo);
   const reRequestStaff = new ReRequestStaffUseCase(accountRepo, accountEventRepo);
   const getIdentity = new GetIdentityUseCase(identityRepo);
   const webhookSender = new StubWebhookSender();
@@ -156,7 +156,7 @@ export function createTestApp(): TestApp {
 
   app.route(
     '/accounts',
-    createAccountRoutes(requestOrganizer, approveOrganizer, rejectOrganizer, reRequestOrganizer, getAccountsByIdentity, requestStaff, reRequestStaff),
+    createAccountRoutes(requestOrganizer, approveOrganizer, rejectOrganizer, reRequestOrganizer, getAccountsByIdentity, addStaffByOrganizer, reRequestStaff, 'test-secret'),
   );
 
   app.route('/identities', createIdentityRoutes(getIdentity));
