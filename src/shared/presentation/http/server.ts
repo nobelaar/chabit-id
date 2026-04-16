@@ -53,8 +53,10 @@ import { ReactivateAccountUseCase } from '../../../modules/account/application/u
 import { GetAccountsByIdentityUseCase } from '../../../modules/account/application/use-cases/GetAccountsByIdentity.usecase.js';
 import { AddStaffByOrganizerUseCase } from '../../../modules/account/application/use-cases/AddStaffByOrganizer.usecase.js';
 import { RemoveStaffByOrganizerUseCase } from '../../../modules/account/application/use-cases/RemoveStaffByOrganizer.usecase.js';
+import { RemoveStaffByIdentityRefUseCase } from '../../../modules/account/application/use-cases/RemoveStaffByIdentityRef.usecase.js';
 import { createAccountRoutes } from '../../../modules/account/presentation/http/account.routes.js';
 import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
+import { GetIdentityByEmailUseCase } from '../../../modules/identity/application/use-cases/GetIdentityByEmail.usecase.js';
 import { createIdentityRoutes } from '../../../modules/identity/presentation/http/identity.routes.js';
 // Check
 import { createCheckRoutes } from '../../../modules/check/presentation/http/check.routes.js';
@@ -176,7 +178,9 @@ export function createApp(): Hono {
   const getAccountsByIdentity = new GetAccountsByIdentityUseCase(accountRepo);
   const addStaffByOrganizer = new AddStaffByOrganizerUseCase(accountRepo, accountEventRepo);
   const removeStaffByOrganizer = new RemoveStaffByOrganizerUseCase(accountRepo, accountEventRepo);
+  const removeStaffByIdentityRef = new RemoveStaffByIdentityRefUseCase(accountRepo, accountEventRepo);
   const getIdentity = new GetIdentityUseCase(identityRepo);
+  const getIdentityByEmail = new GetIdentityByEmailUseCase(identityRepo);
   const webhookSecret = process.env['WEBHOOK_SECRET'] ?? '';
   if (!webhookSecret && process.env['WEBHOOK_BACKEND_URL']) {
     logger.warn('[server] WEBHOOK_SECRET is not set but WEBHOOK_BACKEND_URL is configured — webhook signatures will be invalid');
@@ -207,11 +211,12 @@ export function createApp(): Hono {
     getAccountsByIdentity,
     addStaffByOrganizer,
     removeStaffByOrganizer,
+    removeStaffByIdentityRef,
     jwtSecret,
   );
   app.route('/accounts', accountRoutes);
 
-  const identityRoutes = createIdentityRoutes(getIdentity);
+  const identityRoutes = createIdentityRoutes(getIdentity, getIdentityByEmail, jwtSecret);
   app.route('/identities', identityRoutes);
 
   const checkRoutes = createCheckRoutes(identityRepo, credentialRepo);
@@ -263,6 +268,7 @@ export function startServer(port: number): AppContext {
         'POST /auth/forgot-password',
         'POST /auth/reset-password',
         'POST /accounts/staff-add',
+        'GET  /identities?email=...',
         'GET  /identities/:identityRef',
         'GET  /check/username',
         'GET  /check/email',
