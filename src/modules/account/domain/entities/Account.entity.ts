@@ -53,6 +53,16 @@ export class Account {
     return new Account({ id, identityRef, type: AccountType.staff(), status: AccountStatus.active(), createdBy, createdAt: now, updatedAt: now });
   }
 
+  static createComercio(id: AccountId, identityRef: IdentityRef): Account {
+    const now = new Date();
+    return new Account({ id, identityRef, type: AccountType.comercio(), status: AccountStatus.pending(), createdBy: undefined, createdAt: now, updatedAt: now });
+  }
+
+  static createEmpleadoByComercio(id: AccountId, identityRef: IdentityRef, createdBy: IdentityRef): Account {
+    const now = new Date();
+    return new Account({ id, identityRef, type: AccountType.empleado(), status: AccountStatus.active(), createdBy, createdAt: now, updatedAt: now });
+  }
+
   static createAdmin(id: AccountId, identityRef: IdentityRef, createdBy: IdentityRef): Account {
     const now = new Date();
     return new Account({ id, identityRef, type: AccountType.admin(), status: AccountStatus.active(), createdBy, createdAt: now, updatedAt: now });
@@ -71,7 +81,7 @@ export class Account {
   }
 
   approve(): void {
-    if ((!this.type.isOrganizer() && !this.type.isStaff()) || !this.status.isPending()) {
+    if ((!this.type.isOrganizer() && !this.type.isStaff() && !this.type.isComercio() && !this.type.isEmpleado()) || !this.status.isPending()) {
       throw new InvalidStatusTransitionError(this.type.toPrimitive(), this.status.toPrimitive(), 'approve');
     }
     this.status = AccountStatus.active();
@@ -79,7 +89,7 @@ export class Account {
   }
 
   reject(): void {
-    if ((!this.type.isOrganizer() && !this.type.isStaff()) || !this.status.isPending()) {
+    if ((!this.type.isOrganizer() && !this.type.isStaff() && !this.type.isComercio() && !this.type.isEmpleado()) || !this.status.isPending()) {
       throw new InvalidStatusTransitionError(this.type.toPrimitive(), this.status.toPrimitive(), 'reject');
     }
     this.status = AccountStatus.rejected();
@@ -87,7 +97,7 @@ export class Account {
   }
 
   reRequest(): void {
-    if ((!this.type.isOrganizer() && !this.type.isStaff()) || !this.status.isRejected()) {
+    if ((!this.type.isOrganizer() && !this.type.isStaff() && !this.type.isComercio() && !this.type.isEmpleado()) || !this.status.isRejected()) {
       throw new InvalidStatusTransitionError(this.type.toPrimitive(), this.status.toPrimitive(), 'reRequest');
     }
     this.status = AccountStatus.pending();

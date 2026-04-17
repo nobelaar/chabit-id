@@ -54,6 +54,11 @@ import { GetAccountsByIdentityUseCase } from '../../../modules/account/applicati
 import { AddStaffByOrganizerUseCase } from '../../../modules/account/application/use-cases/AddStaffByOrganizer.usecase.js';
 import { RemoveStaffByOrganizerUseCase } from '../../../modules/account/application/use-cases/RemoveStaffByOrganizer.usecase.js';
 import { RemoveStaffByIdentityRefUseCase } from '../../../modules/account/application/use-cases/RemoveStaffByIdentityRef.usecase.js';
+import { RequestComercioUseCase } from '../../../modules/account/application/use-cases/RequestComercio.usecase.js';
+import { ReRequestComercioUseCase } from '../../../modules/account/application/use-cases/ReRequestComercio.usecase.js';
+import { AddEmpleadoByComercioUseCase } from '../../../modules/account/application/use-cases/AddEmpleadoByComercio.usecase.js';
+import { RemoveEmpleadoByComercioUseCase } from '../../../modules/account/application/use-cases/RemoveEmpleadoByComercio.usecase.js';
+import { RemoveEmpleadoByIdentityRefUseCase } from '../../../modules/account/application/use-cases/RemoveEmpleadoByIdentityRef.usecase.js';
 import { createAccountRoutes } from '../../../modules/account/presentation/http/account.routes.js';
 import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
 import { GetIdentityByEmailUseCase } from '../../../modules/identity/application/use-cases/GetIdentityByEmail.usecase.js';
@@ -179,6 +184,11 @@ export function createApp(): Hono {
   const addStaffByOrganizer = new AddStaffByOrganizerUseCase(accountRepo, accountEventRepo);
   const removeStaffByOrganizer = new RemoveStaffByOrganizerUseCase(accountRepo, accountEventRepo);
   const removeStaffByIdentityRef = new RemoveStaffByIdentityRefUseCase(accountRepo, accountEventRepo);
+  const requestComercio = new RequestComercioUseCase(accountRepo, accountEventRepo);
+  const reRequestComercio = new ReRequestComercioUseCase(accountRepo, accountEventRepo);
+  const addEmpleadoByComercio = new AddEmpleadoByComercioUseCase(accountRepo, accountEventRepo);
+  const removeEmpleadoByComercio = new RemoveEmpleadoByComercioUseCase(accountRepo, accountEventRepo);
+  const removeEmpleadoByIdentityRef = new RemoveEmpleadoByIdentityRefUseCase(accountRepo, accountEventRepo);
   const getIdentity = new GetIdentityUseCase(identityRepo);
   const getIdentityByEmail = new GetIdentityByEmailUseCase(identityRepo);
   const webhookSecret = process.env['WEBHOOK_SECRET'] ?? '';
@@ -212,6 +222,11 @@ export function createApp(): Hono {
     addStaffByOrganizer,
     removeStaffByOrganizer,
     removeStaffByIdentityRef,
+    requestComercio,
+    reRequestComercio,
+    addEmpleadoByComercio,
+    removeEmpleadoByComercio,
+    removeEmpleadoByIdentityRef,
     jwtSecret,
   );
   app.route('/accounts', accountRoutes);
