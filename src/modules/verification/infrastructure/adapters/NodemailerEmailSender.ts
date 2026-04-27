@@ -45,7 +45,8 @@ export class NodemailerEmailSender implements EmailSender {
         html,
         text,
       });
-    } catch {
+    } catch (err) {
+      console.error('[NodemailerEmailSender] sendMail failed:', err);
       throw new EmailDeliveryError(recipient);
     }
   }
