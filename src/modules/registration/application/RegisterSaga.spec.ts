@@ -31,6 +31,7 @@ import { CredentialId } from '../../credential/domain/value-objects/CredentialId
 import { InMemoryAccountRepository } from '../../account/infrastructure/persistence/InMemoryAccountRepository.js';
 import { InMemoryAccountEventRepository } from '../../account/infrastructure/persistence/InMemoryAccountEventRepository.js';
 import { InMemoryAccountQueryAdapter } from '../../account/infrastructure/adapters/InMemoryAccountQueryAdapter.js';
+import { InMemoryIdentityQueryAdapter } from '../../identity/infrastructure/adapters/InMemoryIdentityQueryAdapter.js';
 import { CreateAccountUseCase } from '../../account/application/use-cases/CreateAccount.usecase.js';
 import { AccountId } from '../../account/domain/value-objects/AccountId.vo.js';
 
@@ -93,11 +94,12 @@ function buildSaga() {
   const tokenService = new StubTokenService();
   const reservedList = new StaticUsernameReservedList();
   const accountQueryAdapter = new InMemoryAccountQueryAdapter(accountRepo);
+  const identityQueryAdapter = new InMemoryIdentityQueryAdapter(identityRepo);
 
   const createIdentityUseCase = new CreateIdentityUseCase(identityRepo);
   const createCredentialUseCase = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
   const createAccountUseCase = new CreateAccountUseCase(accountRepo, accountEventRepo);
-  const signInUseCase = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
+  const signInUseCase = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter, identityQueryAdapter);
   const webhookSender = new StubWebhookSender();
 
   const saga = new RegisterSaga(
@@ -272,7 +274,8 @@ describe('RegisterSaga', () => {
 
       const createIdentityUseCase = new CreateIdentityUseCase(identityRepo);
       const createCredentialUseCase = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
-      const signInUseCase = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
+      const identityQueryAdapter = new InMemoryIdentityQueryAdapter(identityRepo);
+      const signInUseCase = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter, identityQueryAdapter);
 
       const stubWebhook = new StubWebhookSender();
       const sagaWithFailingAccount = new RegisterSaga(

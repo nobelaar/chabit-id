@@ -16,12 +16,12 @@ describe('Auth E2E', () => {
 
   describe('POST /auth/sign-in', () => {
     it('returns 200 with tokens for correct credentials', async () => {
-      const { username, password } = await registerTestUser(app, emailSender);
+      const { email, password } = await registerTestUser(app, emailSender);
 
       const res = await app.request('/auth/sign-in', {
         method: 'POST',
         headers: HEADERS,
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
       expect(res.status).toBe(200);
       const body = await res.json() as { accessToken: string; updateToken: string };
@@ -35,7 +35,7 @@ describe('Auth E2E', () => {
       const res = await app.request('/auth/sign-in', {
         method: 'POST',
         headers: HEADERS,
-        body: JSON.stringify({ username: 'testuser', password: 'wrongpassword' }),
+        body: JSON.stringify({ email: 'testuser@example.com', password: 'wrongpassword' }),
       });
       expect(res.status).toBe(401);
       const body = await res.json() as { error: string };

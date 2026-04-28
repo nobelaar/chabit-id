@@ -57,7 +57,7 @@ export function createCredentialRoutes(
       const body = c.req.valid('json');
       const userAgent = c.req.header('user-agent');
       const ipAddress = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip');
-      const result = await signInUseCase.execute({ username: body.username, password: body.password, userAgent, ipAddress });
+      const result = await signInUseCase.execute({ email: body.email, password: body.password, userAgent, ipAddress });
       return c.json(result, 200);
     },
   );

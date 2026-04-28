@@ -3,7 +3,8 @@ import { SessionRepository } from '../../domain/ports/SessionRepository.port.js'
 import { PasswordHasher } from '../../domain/ports/PasswordHasher.port.js';
 import { TokenService } from '../../domain/ports/TokenService.port.js';
 import { AccountQueryPort } from '../../domain/ports/AccountQueryPort.port.js';
-import { Username } from '../../domain/value-objects/Username.vo.js';
+import { IdentityQueryPort } from '../../domain/ports/IdentityQueryPort.port.js';
+import { Email } from '../../../../shared/domain/value-objects/Email.vo.js';
 import { RawPassword } from '../../domain/value-objects/RawPassword.vo.js';
 import { Session } from '../../domain/entities/Session.entity.js';
 import { InvalidCredentialsError } from '../../domain/errors/Credential.errors.js';
@@ -11,7 +12,7 @@ import { InvalidCredentialsError } from '../../domain/errors/Credential.errors.j
 const MAX_SESSIONS = 10;
 
 export interface SignInDto {
-  username: string;
+  email: string;
   password: string;
   userAgent?: string;
   ipAddress?: string;
@@ -29,11 +30,15 @@ export class SignInUseCase {
     private readonly hasher: PasswordHasher,
     private readonly tokenService: TokenService,
     private readonly accountQuery: AccountQueryPort,
+    private readonly identityQuery: IdentityQueryPort,
   ) {}
 
   async execute(dto: SignInDto): Promise<SignInResult> {
-    const username = Username.fromPrimitive(dto.username);
-    const credential = await this.credentialRepo.findByUsername(username);
+    const email = Email.fromPrimitive(dto.email);
+    const identityRef = await this.identityQuery.findIdentityRefByEmail(email);
+    if (!identityRef) throw new InvalidCredentialsError();
+
+    const credential = await this.credentialRepo.findByIdentityRef(identityRef);
     if (!credential) throw new InvalidCredentialsError();
 
     const match = await this.hasher.compare(RawPassword.fromPrimitive(dto.password), credential.getPasswordHash());

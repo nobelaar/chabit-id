@@ -184,7 +184,7 @@ export const openApiSpec: object = {
       post: {
         tags: ['Auth'],
         summary: 'Sign in',
-        description: 'Authenticates a user with username + password. Returns a JWT access token and an updateToken for session refresh.',
+        description: 'Authenticates a user with email + password. Returns a JWT access token and an updateToken for session refresh.',
         requestBody: {
           required: true,
           content: {
@@ -192,19 +192,19 @@ export const openApiSpec: object = {
               schema: {
                 type: 'object',
                 properties: {
-                  username: { type: 'string' },
+                  email: { type: 'string', format: 'email' },
                   password: { type: 'string' },
                 },
-                required: ['username', 'password'],
+                required: ['email', 'password'],
               },
-              example: { username: 'janedoe', password: 'supersecret123' },
+              example: { email: 'janedoe@example.com', password: 'supersecret123' },
             },
           },
         },
         responses: {
           '200': { description: 'Sign-in successful', content: { 'application/json': { schema: { $ref: '#/components/schemas/TokenPair' } } } },
           '400': errorResponse('Validation error', { error: 'VALIDATION_ERROR', message: 'Invalid request body' }),
-          '401': errorResponse('Invalid credentials', { error: 'INVALID_CREDENTIALS', message: 'Username or password is incorrect' }),
+          '401': errorResponse('Invalid credentials', { error: 'INVALID_CREDENTIALS', message: 'Email or password is incorrect' }),
         },
       },
     },

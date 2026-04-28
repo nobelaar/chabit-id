@@ -125,7 +125,7 @@ export class RegisterSaga {
     // No compensation on failure — user exists, can sign in manually
     try {
       const tokens = await this.signIn.execute({
-        username: input.username,
+        email: input.email,
         password: input.password,
         userAgent: input.userAgent,
         ipAddress: input.ipAddress,

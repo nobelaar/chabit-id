@@ -38,6 +38,7 @@ import { createAccountRoutes } from '../../../modules/account/presentation/http/
 import { InMemoryAccountRepository } from '../../../modules/account/infrastructure/persistence/InMemoryAccountRepository.js';
 import { InMemoryAccountEventRepository } from '../../../modules/account/infrastructure/persistence/InMemoryAccountEventRepository.js';
 import { InMemoryAccountQueryAdapter } from '../../../modules/account/infrastructure/adapters/InMemoryAccountQueryAdapter.js';
+import { InMemoryIdentityQueryAdapter } from '../../../modules/identity/infrastructure/adapters/InMemoryIdentityQueryAdapter.js';
 import { CreateAccountUseCase } from '../../../modules/account/application/use-cases/CreateAccount.usecase.js';
 import { RequestOrganizerUseCase } from '../../../modules/account/application/use-cases/RequestOrganizer.usecase.js';
 import { ApproveOrganizerUseCase } from '../../../modules/account/application/use-cases/ApproveOrganizer.usecase.js';
@@ -108,6 +109,7 @@ export function createTestApp(): TestApp {
   const accountRepo = new InMemoryAccountRepository();
   const accountEventRepo = new InMemoryAccountEventRepository();
   const accountQueryAdapter = new InMemoryAccountQueryAdapter(accountRepo);
+  const identityQueryAdapter = new InMemoryIdentityQueryAdapter(identityRepo);
 
   // ── Verification use cases ─────────────────────────────────────────
   const requestVerification = new RequestEmailVerificationUseCase(
@@ -121,7 +123,7 @@ export function createTestApp(): TestApp {
 
   // ── Credential use cases ───────────────────────────────────────────
   const createCredentialUseCase = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
-  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
+  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter, identityQueryAdapter);
   const refreshToken = new RefreshTokenUseCase(credentialRepo, sessionRepo, tokenService, accountQueryAdapter);
   const revokeToken = new RevokeTokenUseCase(sessionRepo);
   const revokeAllTokens = new RevokeAllTokensUseCase(credentialRepo, sessionRepo);

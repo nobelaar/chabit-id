@@ -67,7 +67,7 @@ describe('Forgot-password E2E', () => {
     const siRes = await app.request('/auth/sign-in', {
       method: 'POST',
       headers: HEADERS,
-      body: JSON.stringify({ username, password: newPassword }),
+      body: JSON.stringify({ email, password: newPassword }),
     });
     expect(siRes.status).toBe(200);
     const tokens = await siRes.json() as { accessToken: string; updateToken: string };

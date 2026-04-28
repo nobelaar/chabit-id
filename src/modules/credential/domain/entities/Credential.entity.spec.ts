@@ -14,6 +14,8 @@ import { PasswordHasher } from '../ports/PasswordHasher.port.js';
 import { TokenService, AccessTokenPayload } from '../ports/TokenService.port.js';
 import { UsernameReservedList } from '../ports/UsernameReservedList.port.js';
 import { AccountQueryPort } from '../ports/AccountQueryPort.port.js';
+import { IdentityQueryPort } from '../ports/IdentityQueryPort.port.js';
+import { Email } from '../../../../shared/domain/value-objects/Email.vo.js';
 import { CreateCredentialUseCase } from '../../application/use-cases/CreateCredential.usecase.js';
 import { SignInUseCase } from '../../application/use-cases/SignIn.usecase.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/RefreshToken.usecase.js';
@@ -63,6 +65,14 @@ const stubAccountQuery: AccountQueryPort = {
 };
 
 const IDENTITY_REF = randomUUID();
+const TEST_EMAIL = 'johndoe@example.com';
+
+const stubIdentityQuery: IdentityQueryPort = {
+  findIdentityRefByEmail: async (email: Email) => {
+    if (email.toPrimitive() === TEST_EMAIL) return IdentityRef.fromPrimitive(IDENTITY_REF);
+    return null;
+  },
+};
 
 // ── Session entity tests ───────────────────────────────────────────────────
 
@@ -222,26 +232,26 @@ describe('SignInUseCase', () => {
     hasher = new StubPasswordHasher();
     tokenService = new StubTokenService();
     createCredential = new CreateCredentialUseCase(credentialRepo, hasher, new StubReservedList());
-    signIn = new SignInUseCase(credentialRepo, sessionRepo, hasher, tokenService, stubAccountQuery);
+    signIn = new SignInUseCase(credentialRepo, sessionRepo, hasher, tokenService, stubAccountQuery, stubIdentityQuery);
 
     await createCredential.execute({ identityRef: IDENTITY_REF, username: 'johndoe', password: 'password123' });
   });
 
   it('returns accessToken and updateToken on success', async () => {
-    const result = await signIn.execute({ username: 'johndoe', password: 'password123' });
+    const result = await signIn.execute({ email: TEST_EMAIL, password: 'password123' });
     expect(result.accessToken).toBe('stub-access-token');
     expect(result.updateToken).toBeTruthy();
   });
 
   it('throws InvalidCredentialsError for unknown username', async () => {
     await expect(
-      signIn.execute({ username: 'unknown', password: 'password123' }),
+      signIn.execute({ email: 'unknown@example.com', password: 'password123' }),
     ).rejects.toThrow(InvalidCredentialsError);
   });
 
   it('throws InvalidCredentialsError for wrong password', async () => {
     await expect(
-      signIn.execute({ username: 'johndoe', password: 'wrongpassword' }),
+      signIn.execute({ email: TEST_EMAIL, password: 'wrongpassword' }),
     ).rejects.toThrow(InvalidCredentialsError);
   });
 });
@@ -262,14 +272,14 @@ describe('RefreshTokenUseCase', () => {
     hasher = new StubPasswordHasher();
     tokenService = new StubTokenService();
     const createCredential = new CreateCredentialUseCase(credentialRepo, hasher, new StubReservedList());
-    signIn = new SignInUseCase(credentialRepo, sessionRepo, hasher, tokenService, stubAccountQuery);
+    signIn = new SignInUseCase(credentialRepo, sessionRepo, hasher, tokenService, stubAccountQuery, stubIdentityQuery);
     refreshToken = new RefreshTokenUseCase(credentialRepo, sessionRepo, tokenService, stubAccountQuery);
 
     await createCredential.execute({ identityRef: IDENTITY_REF, username: 'johndoe', password: 'password123' });
   });
 
   it('rotates token on success and returns new tokens', async () => {
-    const { updateToken } = await signIn.execute({ username: 'johndoe', password: 'password123' });
+    const { updateToken } = await signIn.execute({ email: TEST_EMAIL, password: 'password123' });
     const result = await refreshToken.execute({ updateToken });
     expect(result.accessToken).toBe('stub-access-token');
     expect(result.updateToken).toBeTruthy();
@@ -283,7 +293,7 @@ describe('RefreshTokenUseCase', () => {
   });
 
   it('throws SessionExpiredError for expired session', async () => {
-    const { updateToken } = await signIn.execute({ username: 'johndoe', password: 'password123' });
+    const { updateToken } = await signIn.execute({ email: TEST_EMAIL, password: 'password123' });
 
     // Manually expire the session in the store by finding it and replacing with expired version
     const token = UpdateToken.fromPrimitive(updateToken);
@@ -319,14 +329,14 @@ describe('RevokeTokenUseCase', () => {
     hasher = new StubPasswordHasher();
     tokenService = new StubTokenService();
     const createCredential = new CreateCredentialUseCase(credentialRepo, hasher, new StubReservedList());
-    signIn = new SignInUseCase(credentialRepo, sessionRepo, hasher, tokenService, stubAccountQuery);
+    signIn = new SignInUseCase(credentialRepo, sessionRepo, hasher, tokenService, stubAccountQuery, stubIdentityQuery);
     revokeToken = new RevokeTokenUseCase(sessionRepo);
 
     await createCredential.execute({ identityRef: IDENTITY_REF, username: 'johndoe', password: 'password123' });
   });
 
   it('deletes the session so it is no longer findable', async () => {
-    const { updateToken } = await signIn.execute({ username: 'johndoe', password: 'password123' });
+    const { updateToken } = await signIn.execute({ email: TEST_EMAIL, password: 'password123' });
 
     const token = UpdateToken.fromPrimitive(updateToken);
     const session = await sessionRepo.findByUpdateToken(token);

@@ -37,6 +37,7 @@ import { PostgresIdentityRepository } from './modules/identity/infrastructure/pe
 import { PostgresAccountRepository } from './modules/account/infrastructure/persistence/PostgresAccountRepository.js';
 import { PostgresAccountEventRepository } from './modules/account/infrastructure/persistence/PostgresAccountEventRepository.js';
 import { PostgresAccountQueryAdapter } from './modules/account/infrastructure/adapters/PostgresAccountQueryAdapter.js';
+import { PostgresIdentityQueryAdapter } from './modules/identity/infrastructure/adapters/PostgresIdentityQueryAdapter.js';
 
 import { HttpWebhookSender } from './shared/infrastructure/http/HttpWebhookSender.js';
 
@@ -227,7 +228,8 @@ async function main() {
   const createCredential = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
   const createAccount = new CreateAccountUseCase(accountRepo, accountEventRepo);
   const approveOrganizer = new ApproveOrganizerUseCase(accountRepo, accountEventRepo);
-  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
+  const identityQueryAdapter = new PostgresIdentityQueryAdapter(pool);
+  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter, identityQueryAdapter);
 
   const registerSaga = new RegisterSaga(
     verificationRepo,

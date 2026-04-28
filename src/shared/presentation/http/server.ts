@@ -43,6 +43,7 @@ import { createRegistrationRoutes } from '../../../modules/registration/presenta
 import { PostgresAccountRepository } from '../../../modules/account/infrastructure/persistence/PostgresAccountRepository.js';
 import { PostgresAccountEventRepository } from '../../../modules/account/infrastructure/persistence/PostgresAccountEventRepository.js';
 import { PostgresAccountQueryAdapter } from '../../../modules/account/infrastructure/adapters/PostgresAccountQueryAdapter.js';
+import { PostgresIdentityQueryAdapter } from '../../../modules/identity/infrastructure/adapters/PostgresIdentityQueryAdapter.js';
 import { CreateAccountUseCase } from '../../../modules/account/application/use-cases/CreateAccount.usecase.js';
 import { RequestOrganizerUseCase } from '../../../modules/account/application/use-cases/RequestOrganizer.usecase.js';
 import { ApproveOrganizerUseCase } from '../../../modules/account/application/use-cases/ApproveOrganizer.usecase.js';
@@ -151,10 +152,11 @@ export function createApp(): Hono {
   const accountRepo = new PostgresAccountRepository(pgPool);
   const accountEventRepo = new PostgresAccountEventRepository(pgPool);
   const accountQueryAdapter = new PostgresAccountQueryAdapter(pgPool);
+  const identityQueryAdapter = new PostgresIdentityQueryAdapter(pgPool);
 
   // ── Credential use cases ──────────────────────────────────────────
   const createCredentialUseCase = new CreateCredentialUseCase(credentialRepo, passwordHasher, reservedList);
-  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter);
+  const signIn = new SignInUseCase(credentialRepo, sessionRepo, passwordHasher, tokenService, accountQueryAdapter, identityQueryAdapter);
   const refreshToken = new RefreshTokenUseCase(credentialRepo, sessionRepo, tokenService, accountQueryAdapter);
   const revokeToken = new RevokeTokenUseCase(sessionRepo);
   const revokeAllTokensUseCase = new RevokeAllTokensUseCase(credentialRepo, sessionRepo);
