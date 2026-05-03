@@ -6,7 +6,7 @@ import { AccountQueryPort } from '../../domain/ports/AccountQueryPort.port.js';
 import { Username } from '../../domain/value-objects/Username.vo.js';
 import { RawPassword } from '../../domain/value-objects/RawPassword.vo.js';
 import { Session } from '../../domain/entities/Session.entity.js';
-import { InvalidCredentialsError } from '../../domain/errors/Credential.errors.js';
+import { InvalidCredentialsError, AccountLockedError } from '../../domain/errors/Credential.errors.js';
 
 const MAX_SESSIONS = 10;
 
@@ -36,8 +36,17 @@ export class SignInUseCase {
     const credential = await this.credentialRepo.findByUsername(username);
     if (!credential) throw new InvalidCredentialsError();
 
+    if (credential.isLocked()) throw new AccountLockedError(credential.getLockedUntil()!);
+
     const match = await this.hasher.compare(RawPassword.fromPrimitive(dto.password), credential.getPasswordHash());
-    if (!match) throw new InvalidCredentialsError();
+    if (!match) {
+      credential.recordFailedAttempt();
+      await this.credentialRepo.save(credential);
+      throw new InvalidCredentialsError();
+    }
+
+    credential.resetFailedAttempts();
+    await this.credentialRepo.save(credential);
 
     // Clean up expired sessions, enforce max
     await this.sessionRepo.deleteExpiredByCredentialId(credential.getId());

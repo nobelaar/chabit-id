@@ -11,14 +11,16 @@ export class PostgresCredentialRepository implements CredentialRepository {
   async save(credential: Credential): Promise<void> {
     const p = credential.toPrimitive();
     await this.pool.query(
-      `INSERT INTO credentials (id, identity_id, username, password_hash, username_changed_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO credentials (id, identity_id, username, password_hash, username_changed_at, failed_attempts, locked_until, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (id) DO UPDATE SET
          username = EXCLUDED.username,
          password_hash = EXCLUDED.password_hash,
          username_changed_at = EXCLUDED.username_changed_at,
+         failed_attempts = EXCLUDED.failed_attempts,
+         locked_until = EXCLUDED.locked_until,
          updated_at = EXCLUDED.updated_at`,
-      [p.id, p.identityRef, p.username, p.passwordHash, p.usernameChangedAt ?? null, p.createdAt, p.updatedAt],
+      [p.id, p.identityRef, p.username, p.passwordHash, p.usernameChangedAt ?? null, p.failedAttempts, p.lockedUntil ?? null, p.createdAt, p.updatedAt],
     );
   }
 
@@ -48,6 +50,8 @@ export class PostgresCredentialRepository implements CredentialRepository {
       username: row['username'] as string,
       passwordHash: row['password_hash'] as string,
       usernameChangedAt: row['username_changed_at'] as Date | undefined,
+      failedAttempts: (row['failed_attempts'] as number) ?? 0,
+      lockedUntil: row['locked_until'] as Date | undefined,
       createdAt: row['created_at'] as Date,
       updatedAt: row['updated_at'] as Date,
     } satisfies CredentialPrimitives);

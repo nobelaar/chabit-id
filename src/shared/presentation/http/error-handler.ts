@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { Context } from 'hono';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { logger } from '../../infrastructure/logger.js';
@@ -25,6 +26,7 @@ import {
   UsernameAlreadyTakenError,
   UsernameReservedError,
   CannotChangeUsernameYetError,
+  AccountLockedError,
 } from '../../../modules/credential/domain/errors/Credential.errors.js';
 import {
   AccountNotFoundError,
@@ -170,6 +172,9 @@ export function errorHandler(err: Error, c: Context): Response {
   if (err instanceof AccountAlreadyExistsError) return c.json({ error: 'ACCOUNT_ALREADY_EXISTS', message: err.message }, 409);
   if (err instanceof AccountInvalidStatusTransitionError) return c.json({ error: 'INVALID_STATUS_TRANSITION', message: err.message }, 422);
 
+  if (err instanceof AccountLockedError) {
+    return c.json<ErrorResponse>({ error: 'ACCOUNT_LOCKED', message: err.message, retryAfter: err.lockedUntil.toISOString() }, 423);
+  }
   if (err instanceof InvalidCredentialsError) return c.json({ error: 'INVALID_CREDENTIALS', message: err.message }, 401);
   if (err instanceof SessionNotFoundError) return c.json({ error: 'SESSION_NOT_FOUND', message: err.message }, 401);
   if (err instanceof SessionExpiredError) return c.json({ error: 'SESSION_EXPIRED', message: err.message }, 401);
@@ -189,6 +194,7 @@ export function errorHandler(err: Error, c: Context): Response {
     );
   }
 
+  Sentry.captureException(err);
   logger.error({ err }, 'unhandled error');
   return c.json<ErrorResponse>(
     {

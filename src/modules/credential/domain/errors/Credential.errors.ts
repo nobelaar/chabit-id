@@ -23,3 +23,8 @@ export class UsernameReservedError extends CredentialDomainError {
 export class CannotChangeUsernameYetError extends CredentialDomainError {
   constructor(retryAfter: Date) { super(`Cannot change username until ${retryAfter.toISOString()}`); }
 }
+export class AccountLockedError extends CredentialDomainError {
+  constructor(public readonly lockedUntil: Date) {
+    super(`Account is temporarily locked. Try again after ${lockedUntil.toISOString()}`);
+  }
+}
