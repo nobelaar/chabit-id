@@ -14,6 +14,15 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   app:
     build: .
     ports:
@@ -33,6 +42,7 @@ services:
       OTP_HMAC_SECRET: ${OTP_HMAC_SECRET}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       WEBHOOK_BACKEND_URL: ${WEBHOOK_BACKEND_URL:-}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
       SMTP_HOST: ${SMTP_HOST:-host-gateway}
@@ -45,6 +55,8 @@ services:
       - "host-gateway:host-gateway"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
