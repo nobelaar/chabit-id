@@ -14,6 +14,8 @@ export interface CredentialPrimitives {
   usernameChangedAt: Date | undefined;
   failedAttempts: number;
   lockedUntil: Date | undefined;
+  totpSecret: string | null;
+  totpEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +28,8 @@ export class Credential {
   private usernameChangedAt: Date | undefined;
   private failedAttempts: number;
   private lockedUntil: Date | undefined;
+  private totpSecret: string | null;
+  private totpEnabled: boolean;
   private readonly createdAt: Date;
   private updatedAt: Date;
 
@@ -33,6 +37,7 @@ export class Credential {
     id: CredentialId; identityRef: IdentityRef; username: Username;
     passwordHash: PasswordHash; usernameChangedAt: Date | undefined;
     failedAttempts: number; lockedUntil: Date | undefined;
+    totpSecret: string | null; totpEnabled: boolean;
     createdAt: Date; updatedAt: Date;
   }) {
     this.id = props.id; this.identityRef = props.identityRef;
@@ -40,6 +45,8 @@ export class Credential {
     this.usernameChangedAt = props.usernameChangedAt;
     this.failedAttempts = props.failedAttempts;
     this.lockedUntil = props.lockedUntil;
+    this.totpSecret = props.totpSecret;
+    this.totpEnabled = props.totpEnabled;
     this.createdAt = props.createdAt; this.updatedAt = props.updatedAt;
   }
 
@@ -50,6 +57,7 @@ export class Credential {
     return new Credential({
       ...props, usernameChangedAt: undefined,
       failedAttempts: 0, lockedUntil: undefined,
+      totpSecret: null, totpEnabled: false,
       createdAt: now, updatedAt: now,
     });
   }
@@ -63,6 +71,8 @@ export class Credential {
       usernameChangedAt: data.usernameChangedAt,
       failedAttempts: data.failedAttempts,
       lockedUntil: data.lockedUntil,
+      totpSecret: data.totpSecret,
+      totpEnabled: data.totpEnabled,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     });
@@ -97,6 +107,26 @@ export class Credential {
     this.updatedAt = new Date();
   }
 
+  setupTotp(secret: string): void {
+    this.totpSecret = secret;
+    this.totpEnabled = false;
+    this.updatedAt = new Date();
+  }
+
+  enableTotp(): void {
+    this.totpEnabled = true;
+    this.updatedAt = new Date();
+  }
+
+  disableTotp(): void {
+    this.totpSecret = null;
+    this.totpEnabled = false;
+    this.updatedAt = new Date();
+  }
+
+  isTotpEnabled(): boolean { return this.totpEnabled; }
+  getTotpSecret(): string | null { return this.totpSecret; }
+
   getId(): CredentialId { return this.id; }
   getIdentityRef(): IdentityRef { return this.identityRef; }
   getUsername(): Username { return this.username; }
@@ -115,6 +145,8 @@ export class Credential {
       usernameChangedAt: this.usernameChangedAt,
       failedAttempts: this.failedAttempts,
       lockedUntil: this.lockedUntil,
+      totpSecret: this.totpSecret,
+      totpEnabled: this.totpEnabled,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

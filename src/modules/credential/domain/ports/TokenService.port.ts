@@ -19,4 +19,6 @@ export interface TokenService {
   generateAccessToken(payload: AccessTokenPayload): string;
   generateUpdateToken(): UpdateToken;
   generateSessionId(): SessionId;
+  generateChallengeToken(credentialId: string): string;
+  verifyChallengeToken(token: string): string;
 }

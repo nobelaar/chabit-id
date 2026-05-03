@@ -34,6 +34,13 @@ import {
   InvalidStatusTransitionError as AccountInvalidStatusTransitionError,
   InsufficientPermissionsError,
 } from '../../../modules/account/domain/errors/Account.errors.js';
+import {
+  TotpAlreadyEnabledError,
+  TotpNotEnabledError,
+  TotpNotSetupError,
+  InvalidTotpCodeError,
+  InvalidChallengeTokenError,
+} from '../../../modules/credential/domain/errors/TOTP.errors.js';
 
 interface ErrorResponse {
   error: string;
@@ -182,6 +189,12 @@ export function errorHandler(err: Error, c: Context): Response {
   if (err instanceof UsernameReservedError) return c.json({ error: 'USERNAME_RESERVED', message: err.message }, 409);
   if (err instanceof CannotChangeUsernameYetError) return c.json({ error: 'USERNAME_CHANGE_TOO_SOON', message: err.message }, 422);
   if (err instanceof CredentialNotFoundError) return c.json({ error: 'CREDENTIAL_NOT_FOUND', message: err.message }, 404);
+
+  if (err instanceof InvalidTotpCodeError) return c.json({ error: 'INVALID_TOTP_CODE', message: err.message }, 422);
+  if (err instanceof InvalidChallengeTokenError) return c.json({ error: 'INVALID_CHALLENGE_TOKEN', message: err.message }, 401);
+  if (err instanceof TotpAlreadyEnabledError) return c.json({ error: 'TOTP_ALREADY_ENABLED', message: err.message }, 409);
+  if (err instanceof TotpNotEnabledError) return c.json({ error: 'TOTP_NOT_ENABLED', message: err.message }, 409);
+  if (err instanceof TotpNotSetupError) return c.json({ error: 'TOTP_NOT_SETUP', message: err.message }, 422);
 
   if (err instanceof DomainError) {
     logger.warn({ err: err.name, msg: err.message }, 'domain error');

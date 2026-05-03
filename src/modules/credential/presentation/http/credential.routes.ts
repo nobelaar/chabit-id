@@ -9,6 +9,8 @@ import {
   changeUsernameSchema,
   resetPasswordSchema,
   forgotPasswordSchema,
+  totpVerifySchema,
+  totpCodeSchema,
 } from './credential.schemas.js';
 import { SignInUseCase } from '../../application/use-cases/SignIn.usecase.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/RefreshToken.usecase.js';
@@ -18,6 +20,10 @@ import { RevokeAllTokensUseCase } from '../../application/use-cases/RevokeAllTok
 import { ChangeUsernameUseCase } from '../../application/use-cases/ChangeUsername.usecase.js';
 import { ResetPasswordUseCase } from '../../application/use-cases/ResetPassword.usecase.js';
 import { RequestEmailVerificationUseCase } from '../../../verification/application/use-cases/RequestEmailVerification.usecase.js';
+import { SetupTOTPUseCase } from '../../application/use-cases/SetupTOTP.usecase.js';
+import { EnableTOTPUseCase } from '../../application/use-cases/EnableTOTP.usecase.js';
+import { VerifyTOTPUseCase } from '../../application/use-cases/VerifyTOTP.usecase.js';
+import { DisableTOTPUseCase } from '../../application/use-cases/DisableTOTP.usecase.js';
 
 // NOTE: RevokeToken requires the session ID from the JWT.
 // For now, the route extracts 'x-session-id' header (set by the client from the JWT sid claim).
@@ -31,6 +37,10 @@ export function createCredentialRoutes(
   changeUsernameUseCase: ChangeUsernameUseCase,
   resetPasswordUseCase: ResetPasswordUseCase,
   requestVerificationUseCase: RequestEmailVerificationUseCase,
+  setupTotpUseCase: SetupTOTPUseCase,
+  enableTotpUseCase: EnableTOTPUseCase,
+  verifyTotpUseCase: VerifyTOTPUseCase,
+  disableTotpUseCase: DisableTOTPUseCase,
   redisClient?: RedisClient | null,
 ): Hono {
   const router = new Hono();
@@ -169,6 +179,59 @@ export function createCredentialRoutes(
         // Email doesn't exist or any other error — return fake response
         return c.json({ verificationId: -1 }, 200);
       }
+    },
+  );
+
+  // POST /auth/2fa/verify  — step 2 of sign-in when 2FA is enabled
+  router.post(
+    '/2fa/verify',
+    zValidator('json', totpVerifySchema, (result, c) => {
+      if (!result.success) return c.json({ error: 'VALIDATION_ERROR', message: 'Invalid request body', details: result.error.issues }, 400);
+    }),
+    async (c) => {
+      const body = c.req.valid('json');
+      const userAgent = c.req.header('user-agent');
+      const ipAddress = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip');
+      const result = await verifyTotpUseCase.execute({ challengeToken: body.challengeToken, code: body.code, userAgent, ipAddress });
+      return c.json(result, 200);
+    },
+  );
+
+  // POST /auth/2fa/setup  — generate TOTP secret (authenticated)
+  router.post('/2fa/setup', async (c) => {
+    const identityRef = c.req.header('x-identity-ref');
+    if (!identityRef) return c.json({ error: 'MISSING_HEADERS', message: 'x-identity-ref header is required' }, 400);
+    const result = await setupTotpUseCase.execute(identityRef);
+    return c.json(result, 200);
+  });
+
+  // POST /auth/2fa/enable  — confirm first code and activate 2FA (authenticated)
+  router.post(
+    '/2fa/enable',
+    zValidator('json', totpCodeSchema, (result, c) => {
+      if (!result.success) return c.json({ error: 'VALIDATION_ERROR', message: 'Invalid request body', details: result.error.issues }, 400);
+    }),
+    async (c) => {
+      const identityRef = c.req.header('x-identity-ref');
+      if (!identityRef) return c.json({ error: 'MISSING_HEADERS', message: 'x-identity-ref header is required' }, 400);
+      const body = c.req.valid('json');
+      await enableTotpUseCase.execute(identityRef, body.code);
+      return c.json({ message: '2FA enabled successfully' }, 200);
+    },
+  );
+
+  // DELETE /auth/2fa  — disable 2FA (authenticated, requires current code)
+  router.delete(
+    '/2fa',
+    zValidator('json', totpCodeSchema, (result, c) => {
+      if (!result.success) return c.json({ error: 'VALIDATION_ERROR', message: 'Invalid request body', details: result.error.issues }, 400);
+    }),
+    async (c) => {
+      const identityRef = c.req.header('x-identity-ref');
+      if (!identityRef) return c.json({ error: 'MISSING_HEADERS', message: 'x-identity-ref header is required' }, 400);
+      const body = c.req.valid('json');
+      await disableTotpUseCase.execute(identityRef, body.code);
+      return c.json({ message: '2FA disabled successfully' }, 200);
     },
   );
 

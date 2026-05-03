@@ -124,12 +124,15 @@ export class RegisterSaga {
     // ── Step 4: SignIn ─────────────────────────────────────────────────
     // No compensation on failure — user exists, can sign in manually
     try {
-      const tokens = await this.signIn.execute({
+      const signInResult = await this.signIn.execute({
         username: input.username,
         password: input.password,
         userAgent: input.userAgent,
         ipAddress: input.ipAddress,
       });
+      // Newly registered users never have 2FA enabled
+      if (signInResult.requires2FA) throw new Error('Unexpected 2FA challenge on fresh registration');
+      const tokens = signInResult;
 
       const webhookUrl = process.env['WEBHOOK_BACKEND_URL'];
       if (webhookUrl) {

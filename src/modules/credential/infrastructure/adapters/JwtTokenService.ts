@@ -29,4 +29,14 @@ export class JwtTokenService implements TokenService {
   generateSessionId(): SessionId {
     return SessionId.fromPrimitive(randomUUID());
   }
+
+  generateChallengeToken(credentialId: string): string {
+    return jwt.sign({ type: 'totp_challenge', credentialId }, this.secret, { expiresIn: 5 * 60 });
+  }
+
+  verifyChallengeToken(token: string): string {
+    const payload = jwt.verify(token, this.secret) as { type: string; credentialId: string };
+    if (payload.type !== 'totp_challenge') throw new Error('invalid token type');
+    return payload.credentialId;
+  }
 }

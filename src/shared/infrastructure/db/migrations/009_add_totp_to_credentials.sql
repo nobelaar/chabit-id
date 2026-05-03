@@ -1,0 +1,3 @@
+ALTER TABLE credentials
+  ADD COLUMN totp_secret TEXT,
+  ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT FALSE;

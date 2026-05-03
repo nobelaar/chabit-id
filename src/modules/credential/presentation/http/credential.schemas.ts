@@ -28,3 +28,12 @@ export const resetPasswordSchema = z.object({
 export const forgotPasswordSchema = z.object({
   email: z.string().email(),
 });
+
+export const totpVerifySchema = z.object({
+  challengeToken: z.string().min(1),
+  code: z.string().length(6),
+});
+
+export const totpCodeSchema = z.object({
+  code: z.string().length(6),
+});

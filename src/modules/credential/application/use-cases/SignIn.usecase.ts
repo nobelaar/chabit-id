@@ -17,10 +17,9 @@ export interface SignInDto {
   ipAddress?: string;
 }
 
-export interface SignInResult {
-  accessToken: string;
-  updateToken: string;
-}
+export type SignInResult =
+  | { requires2FA: false; accessToken: string; updateToken: string }
+  | { requires2FA: true; challengeToken: string };
 
 export class SignInUseCase {
   constructor(
@@ -47,6 +46,11 @@ export class SignInUseCase {
 
     credential.resetFailedAttempts();
     await this.credentialRepo.save(credential);
+
+    if (credential.isTotpEnabled()) {
+      const challengeToken = this.tokenService.generateChallengeToken(credential.getId().toPrimitive());
+      return { requires2FA: true, challengeToken };
+    }
 
     // Clean up expired sessions, enforce max
     await this.sessionRepo.deleteExpiredByCredentialId(credential.getId());
@@ -75,6 +79,6 @@ export class SignInUseCase {
       accounts,
     });
 
-    return { accessToken, updateToken: updateToken.toPrimitive() };
+    return { requires2FA: false, accessToken, updateToken: updateToken.toPrimitive() };
   }
 }

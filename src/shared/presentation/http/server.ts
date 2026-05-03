@@ -33,6 +33,10 @@ import { RevokeAllTokensUseCase } from '../../../modules/credential/application/
 import { ChangePasswordUseCase } from '../../../modules/credential/application/use-cases/ChangePassword.usecase.js';
 import { ChangeUsernameUseCase } from '../../../modules/credential/application/use-cases/ChangeUsername.usecase.js';
 import { ResetPasswordUseCase } from '../../../modules/credential/application/use-cases/ResetPassword.usecase.js';
+import { SetupTOTPUseCase } from '../../../modules/credential/application/use-cases/SetupTOTP.usecase.js';
+import { EnableTOTPUseCase } from '../../../modules/credential/application/use-cases/EnableTOTP.usecase.js';
+import { VerifyTOTPUseCase } from '../../../modules/credential/application/use-cases/VerifyTOTP.usecase.js';
+import { DisableTOTPUseCase } from '../../../modules/credential/application/use-cases/DisableTOTP.usecase.js';
 import { createCredentialRoutes } from '../../../modules/credential/presentation/http/credential.routes.js';
 // Identity
 import { PostgresIdentityRepository } from '../../../modules/identity/infrastructure/persistence/PostgresIdentityRepository.js';
@@ -169,6 +173,10 @@ export function createApp(): Hono {
     sessionRepo,
     passwordHasher,
   );
+  const setupTotp = new SetupTOTPUseCase(credentialRepo);
+  const enableTotp = new EnableTOTPUseCase(credentialRepo);
+  const verifyTotp = new VerifyTOTPUseCase(credentialRepo, sessionRepo, tokenService, accountQueryAdapter);
+  const disableTotp = new DisableTOTPUseCase(credentialRepo);
 
   // ── Identity use cases ────────────────────────────────────────────
   const createIdentityUseCase = new CreateIdentityUseCase(identityRepo);
@@ -213,6 +221,10 @@ export function createApp(): Hono {
     changeUsernameUseCase,
     resetPasswordUseCase,
     requestVerification,
+    setupTotp,
+    enableTotp,
+    verifyTotp,
+    disableTotp,
     redis,
   );
   app.route('/auth', credentialRoutes);
@@ -286,6 +298,10 @@ export function startServer(port: number): AppContext {
         'PATCH /auth/change-username',
         'POST /auth/forgot-password',
         'POST /auth/reset-password',
+        'POST /auth/2fa/verify',
+        'POST /auth/2fa/setup',
+        'POST /auth/2fa/enable',
+        'DELETE /auth/2fa',
         'POST /accounts/staff-add',
         'GET  /identities?email=...',
         'GET  /identities/:identityRef',

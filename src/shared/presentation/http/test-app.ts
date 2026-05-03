@@ -30,6 +30,10 @@ import { RevokeAllTokensUseCase } from '../../../modules/credential/application/
 import { ChangePasswordUseCase } from '../../../modules/credential/application/use-cases/ChangePassword.usecase.js';
 import { ChangeUsernameUseCase } from '../../../modules/credential/application/use-cases/ChangeUsername.usecase.js';
 import { ResetPasswordUseCase } from '../../../modules/credential/application/use-cases/ResetPassword.usecase.js';
+import { SetupTOTPUseCase } from '../../../modules/credential/application/use-cases/SetupTOTP.usecase.js';
+import { EnableTOTPUseCase } from '../../../modules/credential/application/use-cases/EnableTOTP.usecase.js';
+import { VerifyTOTPUseCase } from '../../../modules/credential/application/use-cases/VerifyTOTP.usecase.js';
+import { DisableTOTPUseCase } from '../../../modules/credential/application/use-cases/DisableTOTP.usecase.js';
 // Identity
 import { InMemoryIdentityRepository } from '../../../modules/identity/infrastructure/persistence/InMemoryIdentityRepository.js';
 import { CreateIdentityUseCase } from '../../../modules/identity/application/use-cases/CreateIdentity.usecase.js';
@@ -128,6 +132,10 @@ export function createTestApp(): TestApp {
   const changePassword = new ChangePasswordUseCase(credentialRepo, sessionRepo, passwordHasher);
   const changeUsername = new ChangeUsernameUseCase(credentialRepo, reservedList);
   const resetPassword = new ResetPasswordUseCase(verificationRepo, hasher, identityRepo, credentialRepo, sessionRepo, passwordHasher);
+  const setupTotp = new SetupTOTPUseCase(credentialRepo);
+  const enableTotp = new EnableTOTPUseCase(credentialRepo);
+  const verifyTotp = new VerifyTOTPUseCase(credentialRepo, sessionRepo, tokenService, accountQueryAdapter);
+  const disableTotp = new DisableTOTPUseCase(credentialRepo);
 
   // ── Identity use cases ─────────────────────────────────────────────
   const createIdentityUseCase = new CreateIdentityUseCase(identityRepo);
@@ -165,6 +173,10 @@ export function createTestApp(): TestApp {
       changeUsername,
       resetPassword,
       requestVerification,
+      setupTotp,
+      enableTotp,
+      verifyTotp,
+      disableTotp,
     ),
   );
 
