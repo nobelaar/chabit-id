@@ -4,6 +4,18 @@ import { logger } from '../logger.js';
 
 let client: Redis | null = null;
 
+export function getRawRedisClient(): Redis | null {
+  const url = process.env['REDIS_URL'];
+  if (!url) return null;
+
+  if (!client) {
+    client = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: null });
+    client.on('error', (err: unknown) => logger.error({ err }, 'redis error'));
+  }
+
+  return client;
+}
+
 export function getRedisClient(): RedisClient | null {
   const url = process.env['REDIS_URL'];
   if (!url) return null;

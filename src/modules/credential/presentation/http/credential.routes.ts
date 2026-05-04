@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { rateLimiter, RedisStore } from 'hono-rate-limiter';
 import type { RedisClient } from 'hono-rate-limiter';
+import jwt from 'jsonwebtoken';
 import {
   signInSchema,
   refreshTokenSchema,
@@ -24,6 +25,7 @@ import { SetupTOTPUseCase } from '../../application/use-cases/SetupTOTP.usecase.
 import { EnableTOTPUseCase } from '../../application/use-cases/EnableTOTP.usecase.js';
 import { VerifyTOTPUseCase } from '../../application/use-cases/VerifyTOTP.usecase.js';
 import { DisableTOTPUseCase } from '../../application/use-cases/DisableTOTP.usecase.js';
+import { addToBlacklist } from '../../../../shared/infrastructure/redis/tokenBlacklist.js';
 
 // NOTE: RevokeToken requires the session ID from the JWT.
 // For now, the route extracts 'x-session-id' header (set by the client from the JWT sid claim).
@@ -42,6 +44,7 @@ export function createCredentialRoutes(
   verifyTotpUseCase: VerifyTOTPUseCase,
   disableTotpUseCase: DisableTOTPUseCase,
   redisClient?: RedisClient | null,
+  jwtSecret?: string,
 ): Hono {
   const router = new Hono();
   const store = redisClient ? new RedisStore({ client: redisClient }) : undefined;
@@ -94,6 +97,27 @@ export function createCredentialRoutes(
   router.post('/sign-out', async (c) => {
     const sessionId = c.req.header('x-session-id');
     if (!sessionId) return c.json({ error: 'MISSING_SESSION', message: 'x-session-id header required' }, 400);
+
+    // Blacklist the JWT so it can't be reused before expiry
+    const authorization = c.req.header('Authorization');
+    if (authorization && jwtSecret) {
+      const [type, token] = authorization.split(' ');
+      if (type === 'Bearer' && token) {
+        try {
+          const decoded = jwt.decode(token) as { jti?: string; exp?: number } | null;
+          if (decoded?.jti) {
+            const now = Math.floor(Date.now() / 1000);
+            const remaining = (decoded.exp ?? now) - now;
+            if (remaining > 0) {
+              await addToBlacklist(decoded.jti, remaining);
+            }
+          }
+        } catch {
+          // Token decode failed — ignore, still revoke session below
+        }
+      }
+    }
+
     await revokeTokenUseCase.execute({ sessionId });
     return c.json({ message: 'Signed out successfully' }, 200);
   });

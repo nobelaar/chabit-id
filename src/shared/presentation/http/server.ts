@@ -230,6 +230,7 @@ export function createApp(): Hono {
     verifyTotp,
     disableTotp,
     redis,
+    jwtSecret,
   );
   app.route('/auth', credentialRoutes);
 

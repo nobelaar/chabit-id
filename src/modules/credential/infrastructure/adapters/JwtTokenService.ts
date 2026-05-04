@@ -14,6 +14,7 @@ export class JwtTokenService implements TokenService {
       {
         sub: payload.sub.toPrimitive(),
         sid: payload.sid.toPrimitive(),
+        jti: randomUUID(),
         username: payload.username,
         accounts: payload.accounts,
       },
