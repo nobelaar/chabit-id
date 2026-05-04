@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { GetIdentityUseCase } from '../../application/use-cases/GetIdentity.usecase.js';
 import { GetIdentityByEmailUseCase } from '../../application/use-cases/GetIdentityByEmail.usecase.js';
 import { createAuthMiddleware } from '../../../../shared/presentation/http/auth.middleware.js';
+import { createInternalApiKeyMiddleware } from '../../../../shared/presentation/http/internal-api-key.middleware.js';
 
 export function createIdentityRoutes(
   getIdentity: GetIdentityUseCase,
@@ -10,6 +11,7 @@ export function createIdentityRoutes(
 ): Hono {
   const router = new Hono();
   const auth = createAuthMiddleware(jwtSecret);
+  const internalApiKey = createInternalApiKeyMiddleware();
 
   // GET /identities?email=user@example.com  — authenticated, for organizer staff lookup
   router.get('/', auth, async (c) => {
@@ -21,10 +23,8 @@ export function createIdentityRoutes(
     return c.json({ identityRef: result.identityRef, fullName: result.fullName }, 200);
   });
 
-  // GET /identities/:identityRef
-  // Returns only the fields needed by backend-chabit for lazy wallet creation.
-  // Deliberately excludes internal fields: blnkIdentityRef, createdAt, updatedAt.
-  router.get('/:identityRef', async (c) => {
+  // GET /identities/:identityRef — internal only, called by backend-chabit for lazy wallet creation
+  router.get('/:identityRef', internalApiKey, async (c) => {
     const identityRef = c.req.param('identityRef');
     const result = await getIdentity.execute({ identityId: identityRef });
     return c.json({
