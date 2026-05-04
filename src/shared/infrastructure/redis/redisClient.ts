@@ -12,7 +12,18 @@ export function getRedisClient(): RedisClient | null {
     client = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: null });
     client.on('error', (err: unknown) => logger.error({ err }, 'redis error'));
   }
-  return client as unknown as RedisClient;
+
+  const r = client;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wrapper: RedisClient = {
+    scriptLoad: (script: string) => r.call('SCRIPT', 'LOAD', script) as Promise<string>,
+    evalsha: (sha1: string, keys: string[], args: any[]) =>
+      r.evalsha(sha1, keys.length, ...(keys as any[]), ...(args as any[])) as Promise<any>,
+    decr: (key: string) => r.decr(key),
+    del: (key: string) => r.del(key),
+  };
+
+  return wrapper;
 }
 
 export async function closeRedisClient(): Promise<void> {
