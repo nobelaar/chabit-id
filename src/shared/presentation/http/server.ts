@@ -4,6 +4,7 @@ import type { ServerType } from '@hono/node-server';
 import { swaggerUI } from '@hono/swagger-ui';
 import { errorHandler } from './error-handler.js';
 import { createCorsMiddleware } from './cors.middleware.js';
+import { securityHeadersMiddleware } from './security-headers.middleware.js';
 import { logger } from '../../infrastructure/logger.js';
 import { openApiSpec } from './openapi.js';
 import { getRedisClient } from '../../infrastructure/redis/redisClient.js';
@@ -85,6 +86,9 @@ export function createApp(): Hono {
 
   // ── CORS ──────────────────────────────────────────────────────────
   app.use('*', createCorsMiddleware());
+
+  // ── Security headers ──────────────────────────────────────────────
+  app.use('*', securityHeadersMiddleware);
 
   // ── Docs ──────────────────────────────────────────────────────────
   app.get('/docs', swaggerUI({ url: '/docs/spec' }));
