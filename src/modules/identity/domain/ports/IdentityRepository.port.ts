@@ -9,4 +9,5 @@ export interface IdentityRepository {
   findByEmail(email: Email): Promise<Identity | null>;
   findByPhone(phone: PhoneNumber): Promise<Identity | null>;
   hardDelete(id: IdentityId): Promise<void>;
+  anonymize(id: IdentityId): Promise<void>;
 }

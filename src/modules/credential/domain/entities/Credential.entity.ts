@@ -96,6 +96,11 @@ export class Credential {
     this.updatedAt = new Date();
   }
 
+  permanentlyLock(): void {
+    this.lockedUntil = new Date('2099-12-31T00:00:00Z');
+    this.updatedAt = new Date();
+  }
+
   updatePassword(newHash: PasswordHash): void {
     this.passwordHash = newHash;
     this.updatedAt = new Date();

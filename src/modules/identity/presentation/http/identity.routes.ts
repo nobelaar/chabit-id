@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { GetIdentityUseCase } from '../../application/use-cases/GetIdentity.usecase.js';
 import { GetIdentityByEmailUseCase } from '../../application/use-cases/GetIdentityByEmail.usecase.js';
+import { AnonymizeIdentityUseCase, IdentityNotFoundError } from '../../application/use-cases/AnonymizeIdentity.usecase.js';
 import { createAuthMiddleware } from '../../../../shared/presentation/http/auth.middleware.js';
 import { createInternalApiKeyMiddleware } from '../../../../shared/presentation/http/internal-api-key.middleware.js';
 
 export function createIdentityRoutes(
   getIdentity: GetIdentityUseCase,
   getIdentityByEmail: GetIdentityByEmailUseCase,
+  anonymizeIdentity: AnonymizeIdentityUseCase,
   jwtSecret: string,
 ): Hono {
   const router = new Hono();
@@ -21,6 +23,18 @@ export function createIdentityRoutes(
     }
     const result = await getIdentityByEmail.execute({ email });
     return c.json({ identityRef: result.identityRef, fullName: result.fullName }, 200);
+  });
+
+  // DELETE /identities/me — authenticated user anonymizes their own account
+  router.delete('/me', auth, async (c) => {
+    const identityRef = c.get('jwtPayload').sub;
+    try {
+      await anonymizeIdentity.execute(identityRef);
+      return c.json({ message: 'Account anonymized' }, 200);
+    } catch (err) {
+      if (err instanceof IdentityNotFoundError) return c.json({ error: 'NOT_FOUND' }, 404);
+      throw err;
+    }
   });
 
   // GET /identities/:identityRef — internal only, called by backend-chabit for lazy wallet creation

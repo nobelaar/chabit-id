@@ -32,4 +32,8 @@ export class InMemoryIdentityRepository implements IdentityRepository {
   async hardDelete(id: IdentityId): Promise<void> {
     this.store.delete(id.toPrimitive());
   }
+
+  async anonymize(id: IdentityId): Promise<void> {
+    this.store.delete(id.toPrimitive());
+  }
 }

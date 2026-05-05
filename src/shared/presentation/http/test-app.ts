@@ -59,6 +59,7 @@ import { RemoveEmployeeByIdentityRefUseCase } from '../../../modules/account/app
 // Identity
 import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
 import { GetIdentityByEmailUseCase } from '../../../modules/identity/application/use-cases/GetIdentityByEmail.usecase.js';
+import { AnonymizeIdentityUseCase } from '../../../modules/identity/application/use-cases/AnonymizeIdentity.usecase.js';
 import { createIdentityRoutes } from '../../../modules/identity/presentation/http/identity.routes.js';
 // Webhook stub
 import type { WebhookSender } from '../../infrastructure/http/WebhookSender.port.js';
@@ -157,6 +158,7 @@ export function createTestApp(): TestApp {
   const removeEmployeeByIdentityRef = new RemoveEmployeeByIdentityRefUseCase(accountRepo, accountEventRepo);
   const getIdentity = new GetIdentityUseCase(identityRepo);
   const getIdentityByEmail = new GetIdentityByEmailUseCase(identityRepo);
+  const anonymizeIdentity = new AnonymizeIdentityUseCase(identityRepo, credentialRepo, sessionRepo);
   const webhookSender = new StubWebhookSender();
 
   // ── Routes ────────────────────────────────────────────────────────
@@ -185,7 +187,7 @@ export function createTestApp(): TestApp {
     createAccountRoutes(requestOrganizer, approveOrganizer, rejectOrganizer, reRequestOrganizer, getAccountsByIdentity, addStaffByOrganizer, removeStaffByOrganizer, removeStaffByIdentityRef, requestCommerce, reRequestCommerce, addEmployeeByCommerce, removeEmployeeByCommerce, removeEmployeeByIdentityRef, 'test-secret'),
   );
 
-  app.route('/identities', createIdentityRoutes(getIdentity, getIdentityByEmail, 'test-secret'));
+  app.route('/identities', createIdentityRoutes(getIdentity, getIdentityByEmail, anonymizeIdentity, 'test-secret'));
 
   app.route('/check', createCheckRoutes(identityRepo, credentialRepo));
 

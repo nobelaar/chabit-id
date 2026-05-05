@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Pool } from 'pg';
 import { Identity, IdentityPrimitives } from '../../domain/entities/Identity.entity.js';
 import { IdentityId } from '../../domain/value-objects/IdentityId.vo.js';
@@ -53,6 +54,20 @@ export class PostgresIdentityRepository implements IdentityRepository {
 
   async hardDelete(id: IdentityId): Promise<void> {
     await this.pool.query(`DELETE FROM identities WHERE id = $1`, [id.toPrimitive()]);
+  }
+
+  async anonymize(id: IdentityId): Promise<void> {
+    const raw = id.toPrimitive();
+    const suffix = createHash('sha256').update(raw).digest('hex').slice(0, 12);
+    await this.pool.query(
+      `UPDATE identities
+       SET full_name = 'usuario_eliminado',
+           email     = $2,
+           phone     = $3,
+           updated_at = now()
+       WHERE id = $1`,
+      [raw, `deleted_${suffix}@deleted.chabit.com`, `deleted_${suffix}`],
+    );
   }
 
   private toEntity(row: Record<string, unknown>): Identity {

@@ -68,9 +68,11 @@ import { RemoveEmployeeByIdentityRefUseCase } from '../../../modules/account/app
 import { createAccountRoutes } from '../../../modules/account/presentation/http/account.routes.js';
 import { GetIdentityUseCase } from '../../../modules/identity/application/use-cases/GetIdentity.usecase.js';
 import { GetIdentityByEmailUseCase } from '../../../modules/identity/application/use-cases/GetIdentityByEmail.usecase.js';
+import { AnonymizeIdentityUseCase } from '../../../modules/identity/application/use-cases/AnonymizeIdentity.usecase.js';
 import { createIdentityRoutes } from '../../../modules/identity/presentation/http/identity.routes.js';
 // Check
 import { createCheckRoutes } from '../../../modules/check/presentation/http/check.routes.js';
+import { createStorageRoutes } from './storage.routes.js';
 import { HttpWebhookSender } from '../../infrastructure/http/HttpWebhookSender.js';
 
 export interface AppContext {
@@ -226,6 +228,7 @@ export function createApp(): Hono {
   const removeEmployeeByIdentityRef = new RemoveEmployeeByIdentityRefUseCase(accountRepo, accountEventRepo);
   const getIdentity = new GetIdentityUseCase(identityRepo);
   const getIdentityByEmail = new GetIdentityByEmailUseCase(identityRepo);
+  const anonymizeIdentity = new AnonymizeIdentityUseCase(identityRepo, credentialRepo, sessionRepo);
   const webhookSecret = process.env['WEBHOOK_SECRET'] ?? '';
   if (!webhookSecret && process.env['WEBHOOK_BACKEND_URL']) {
     logger.warn('[server] WEBHOOK_SECRET is not set but WEBHOOK_BACKEND_URL is configured — webhook signatures will be invalid');
@@ -274,7 +277,7 @@ export function createApp(): Hono {
   );
   app.route('/accounts', accountRoutes);
 
-  const identityRoutes = createIdentityRoutes(getIdentity, getIdentityByEmail, jwtSecret);
+  const identityRoutes = createIdentityRoutes(getIdentity, getIdentityByEmail, anonymizeIdentity, jwtSecret);
   app.route('/identities', identityRoutes);
 
   const checkRoutes = createCheckRoutes(identityRepo, credentialRepo, redis);
@@ -294,6 +297,8 @@ export function createApp(): Hono {
   );
   const registrationRoutes = createRegistrationRoutes(registerSaga);
   app.route('/register', registrationRoutes);
+
+  app.route('/storage', createStorageRoutes(jwtSecret));
 
   // ── Error handler (last) ──────────────────────────────────────────
   app.onError(errorHandler);
