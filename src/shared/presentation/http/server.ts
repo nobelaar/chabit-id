@@ -7,7 +7,7 @@ import { createCorsMiddleware } from './cors.middleware.js';
 import { securityHeadersMiddleware } from './security-headers.middleware.js';
 import { logger } from '../../infrastructure/logger.js';
 import { openApiSpec } from './openapi.js';
-import { getRedisClient } from '../../infrastructure/redis/redisClient.js';
+import { getRedisClient, getRawRedisClient } from '../../infrastructure/redis/redisClient.js';
 // Verification
 import { createVerificationRoutes } from '../../../modules/verification/presentation/http/verification.routes.js';
 import { RequestEmailVerificationUseCase } from '../../../modules/verification/application/use-cases/RequestEmailVerification.usecase.js';
@@ -82,7 +82,29 @@ export function createApp(): Hono {
   const app = new Hono();
 
   // ── Health check (public, before CORS) ────────────────────────────
-  app.get('/health', (c) => c.json({ status: 'ok' }));
+  app.get('/health', async (c) => {
+    const checks: Record<string, 'ok' | 'error'> = {};
+
+    try {
+      await pgPool.query('SELECT 1');
+      checks.db = 'ok';
+    } catch {
+      checks.db = 'error';
+    }
+
+    const redis = getRawRedisClient();
+    if (redis) {
+      try {
+        await redis.ping();
+        checks.redis = 'ok';
+      } catch {
+        checks.redis = 'error';
+      }
+    }
+
+    const healthy = Object.values(checks).every((v) => v === 'ok');
+    return c.json({ status: healthy ? 'ok' : 'degraded', checks }, healthy ? 200 : 503);
+  });
 
   // ── CORS ──────────────────────────────────────────────────────────
   app.use('*', createCorsMiddleware());
